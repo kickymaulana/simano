@@ -1,0 +1,34 @@
+{
+    "$schema": "https://www.schemastore.org/package.json",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "vite build",
+        "dev": "vite"
+    },
+    "devDependencies": {
+        "@fe-fast/varlet-mcp": "github:varletjs/mcp",
+        "@tailwindcss/vite": "^4.0.0",
+        "@varlet/import-resolver": "^3.20.6",
+        "concurrently": "^10.0.3",
+        "laravel-vite-plugin": "^3.1",
+        "tailwindcss": "^4.0.0",
+        "typescript": "^5.9.3",
+        "unplugin-auto-import": "^21.1.0",
+        "unplugin-vue-components": "^32.1.0",
+        "vite": "^8.0.0"
+    },
+    "optionalDependencies": {
+        "@laravel/multiplex": "^0.4.1"
+    },
+    "dependencies": {
+        "@inertiajs/vue3": "^3.7.0",
+        "@varlet/ui": "^3.20.6",
+        "@vitejs/plugin-vue": "^6.0.8",
+        "axios": "^1.20.0",
+        "lottie-web": "^5.13.0",
+        "vue": "^3.5.42",
+        "vue-tsc": "^3.3.11",
+        "ziggy-js": "^2.6.4"
+    }
+}
