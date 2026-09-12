@@ -5,7 +5,7 @@ import { route } from 'ziggy-js';
 
 defineProps<{ title?: string }>();
 
-const page = usePage<{ auth: { roles: string[] } }>();
+const page = usePage<{ auth: { user: { name: string } | null; roles: string[] } }>();
 const canAccessAdmin = computed(() => (page.props.auth.roles ?? []).some((r) => r === 'admin' || r === 'hr'));
 
 const form = useForm({});
@@ -18,9 +18,9 @@ const logout = () => form.post(route('logout'));
             <div class="mx-auto flex max-w-2xl items-center justify-between">
                 <Link :href="route('home')" class="text-lg font-bold text-blue-700">SIMANO</Link>
                 <div class="flex items-center gap-2">
-                    <Link :href="route('home')" class="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 lg:inline-flex">Beranda</Link>
+                    <span v-if="page.props.auth.user" class="max-w-24 truncate text-sm font-medium text-slate-700">{{ page.props.auth.user.name }}</span>
                     <Link v-if="canAccessAdmin" :href="route('admin.dashboard')" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100">Panel Admin</Link>
-                    <form @submit.prevent="logout">
+                    <form v-if="page.props.auth.user" @submit.prevent="logout">
                         <button type="submit" :disabled="form.processing" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100">Logout</button>
                     </form>
                 </div>

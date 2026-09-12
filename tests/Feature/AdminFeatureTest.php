@@ -2,9 +2,12 @@
 
 namespace Tests\Feature;
 
+use App\Models\Department;
 use App\Models\Evaluation;
 use App\Models\EvaluationPeriod;
 use App\Models\EvaluationTemplate;
+use App\Models\Factory;
+use App\Models\Position;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -82,10 +85,17 @@ class AdminFeatureTest extends TestCase
     {
         $admin = $this->userWithRole('admin');
         Role::firstOrCreate(['name' => 'hr', 'guard_name' => 'web']);
+        $position = Position::factory()->create();
+        $department = Department::factory()->create();
+        $factory = Factory::factory()->create();
         $pending = User::factory()->create([
             'is_approved' => false,
             'requested_role' => 'hr',
+            'requested_position_id' => $position->id,
+            'requested_department_id' => $department->id,
         ]);
+        $pending->requestedDepartments()->sync([$department->id]);
+        $pending->requestedFactories()->sync([$factory->id]);
 
         $this->actingAs($admin)->post(route('admin.pending-users.approve', $pending))
             ->assertRedirect();
@@ -95,8 +105,16 @@ class AdminFeatureTest extends TestCase
         $this->assertTrue($pending->is_approved);
         $this->assertTrue($pending->active);
         $this->assertNull($pending->requested_role);
+        $this->assertNull($pending->requested_position_id);
+        $this->assertNull($pending->requested_department_id);
         $this->assertEquals('hr', $pending->role);
+        $this->assertEquals($position->id, $pending->position_id);
+        $this->assertEquals($department->id, $pending->department_id);
         $this->assertTrue($pending->hasRole('hr'));
+        $this->assertTrue($pending->factories()->whereKey($factory->id)->exists());
+        $this->assertTrue($pending->departments()->whereKey($department->id)->exists());
+        $this->assertDatabaseMissing('requested_factory_user', ['user_id' => $pending->id]);
+        $this->assertDatabaseMissing('requested_department_user', ['user_id' => $pending->id]);
     }
 
     private function userWithRole(string $role): User

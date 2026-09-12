@@ -16,13 +16,18 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call(RolesAndPermissionsSeeder::class);
+        $this->call(OrgSeeder::class);
+        $this->call(EvaluationTemplateSeeder::class);
 
-        $user = User::factory()->create([
-            'nik' => 'TEST001',
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $user = User::updateOrCreate(['nik' => 'D260065'], [
+            'name' => 'Kicky Maulana',
+            'email' => 'kickymaulana@gmail.com',
+            'role' => 'admin',
+            'is_approved' => true,
+            'active' => true,
+            'email_verified_at' => now(),
         ]);
 
-        $user->assignRole('employee');
+        $user->syncRoles(['admin']);
     }
 }

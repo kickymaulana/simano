@@ -2,6 +2,9 @@
 
 namespace Tests\Feature;
 
+use App\Models\Department;
+use App\Models\Factory;
+use App\Models\Position;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Http;
@@ -87,15 +90,31 @@ class SsoControllerTest extends TestCase
     public function test_role_request_settles_on_login_without_bypassing_approval(): void
     {
         $user = User::factory()->create(['is_approved' => false, 'requested_role' => null]);
+        $position = Position::factory()->create();
+        $department = Department::factory()->create();
+        $factory = Factory::factory()->create();
 
         $this->withSession(['pending_user_id' => $user->id])
-            ->post(route('pending-role.store'), ['role' => 'employee'])
+            ->post(route('pending-role.store'), [
+                'role' => 'employee',
+                'position_id' => $position->id,
+                'department_ids' => [$department->id],
+                'factory_ids' => [$factory->id],
+            ])
             ->assertRedirect(route('sso.login'))
             ->assertSessionMissing('pending_user_id')
             ->assertSessionHasErrors(['sso' => 'Permintaan role terkirim. Silakan tunggu persetujuan admin.']);
 
         $this->assertLoginError('Permintaan role terkirim. Silakan tunggu persetujuan admin.');
-        $this->assertDatabaseHas('users', ['id' => $user->id, 'requested_role' => 'employee', 'is_approved' => false]);
+        $this->assertDatabaseHas('users', [
+            'id' => $user->id,
+            'requested_role' => 'employee',
+            'requested_position_id' => $position->id,
+            'requested_department_id' => $department->id,
+            'is_approved' => false,
+        ]);
+        $this->assertDatabaseHas('requested_factory_user', ['user_id' => $user->id, 'factory_id' => $factory->id]);
+        $this->assertDatabaseHas('requested_department_user', ['user_id' => $user->id, 'department_id' => $department->id]);
     }
 
     public function test_approved_callback_authenticates_and_preserves_intended_redirect(): void

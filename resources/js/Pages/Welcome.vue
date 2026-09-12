@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, usePage } from '@inertiajs/vue3';
 import { route } from 'ziggy-js';
-import { Card as VarCard } from '@varlet/ui';
-import '@varlet/ui/es/card/style/index';
 import EmployeeLayout from '../Layouts/EmployeeLayout.vue';
 
 const page = usePage<{ auth: { user: unknown } }>();
@@ -11,30 +9,25 @@ const page = usePage<{ auth: { user: unknown } }>();
 <template>
     <Head title="Beranda" />
 
-    <EmployeeLayout title="Evaluasi kinerja lebih mudah.">
+    <EmployeeLayout title="SIMANO">
         <template #header-actions>
             <Link v-if="page.props.auth.user" :href="route('dashboard')" class="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Dashboard</Link>
             <a v-else :href="route('sso.login')" class="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white">Login dengan SSO</a>
         </template>
 
-        <template #subtitle>
-            <p class="mt-2 text-slate-600">Sistem penilaian bulanan yang terintegrasi, terukur, dan menjaga kerahasiaan penilai.</p>
-        </template>
+        <section class="grid min-h-[60vh] place-items-center rounded-3xl bg-blue-700 p-8 text-center text-white shadow-sm">
+            <div>
+                <p class="text-sm font-semibold uppercase tracking-widest text-blue-200">Sistem Penilaian Kinerja Atasan & Operator</p>
+                <h1 class="mt-3 text-3xl font-bold sm:text-4xl">Rekap kinerja otomatis,<br />kerahasiaan penilai terjaga.</h1>
+                <p class="mx-auto mt-3 max-w-xl text-blue-100">Ganti evaluasi manual yang sulit direkap. Isi penilaian dalam hitungan menit.</p>
 
-        <section class="space-y-4">
-            <div class="rounded-2xl bg-blue-700 p-5 text-white shadow-sm sm:p-6">
-                <p class="text-sm font-semibold uppercase tracking-widest text-blue-200">Periode berjalan</p>
-                <p class="mt-2 text-xl font-semibold">Belum ada evaluasi bulan ini</p>
-                <p class="mt-1 text-sm text-blue-100">Pilih atasan dan isi penilaian saat periode aktif.</p>
-                <Link v-if="page.props.auth.user" :href="route('dashboard')" class="mt-4 inline-block rounded-lg bg-white px-4 py-2 font-semibold text-blue-700">Kerjakan evaluasi →</Link>
-                <a v-else :href="route('sso.login')" class="mt-4 inline-block rounded-lg bg-white px-4 py-2 font-semibold text-blue-700">Login dengan SSO</a>
-            </div>
-
-            <div class="grid gap-3 sm:grid-cols-2">
-                <var-card title="Aman dan anonim" description="Identitas penilai tidak tampil pada rekap." />
-                <var-card title="Cepat dan terukur" description="14 pertanyaan dengan skala nilai 1–5." />
+                <Link v-if="page.props.auth.user" :href="route('dashboard')" class="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-lg font-bold text-blue-700 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl">
+                    Kerjakan evaluasi →<span class="sr-only">Evaluasi</span>
+                </Link>
+                <a v-else :href="route('sso.login')" class="mt-8 inline-flex items-center gap-2 rounded-xl bg-white px-8 py-4 text-lg font-bold text-blue-700 shadow-lg transition hover:-translate-y-0.5 hover:shadow-xl">
+                    Login & Kerjakan Evaluasi →
+                </a>
             </div>
         </section>
     </EmployeeLayout>
 </template>
-

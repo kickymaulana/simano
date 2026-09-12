@@ -17,6 +17,10 @@ const logout = () => form.post(route('logout'));
                     <nav class="space-y-1">
                         <Link :href="route('admin.dashboard')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Dashboard</Link>
                         <Link :href="route('admin.pending-users.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Pending user</Link>
+                        <Link :href="route('admin.users.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">User</Link>
+                        <Link :href="route('admin.positions.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Jabatan</Link>
+                        <Link :href="route('admin.factories.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Pabrik</Link>
+                        <Link :href="route('admin.departments.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Departemen</Link>
                         <Link :href="route('admin.evaluation-periods.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Periode evaluasi</Link>
                         <Link :href="route('admin.evaluation-templates.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Template evaluasi</Link>
                         <Link :href="route('admin.reports.evaluations')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Rekap evaluasi</Link>
