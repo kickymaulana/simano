@@ -17,7 +17,7 @@ class DepartmentController extends Controller
     public function index(): Response
     {
         return Inertia::render('Admin/Departments/Index', [
-            'departments' => Department::query()->orderBy('name')->get(),
+            'departments' => Department::query()->orderBy('name')->paginate(10)->withQueryString(),
         ]);
     }
 

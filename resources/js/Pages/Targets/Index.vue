@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, Link, router } from '@inertiajs/vue3';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import EmployeeLayout from '../../Layouts/EmployeeLayout.vue';
 import LottieState from '../../Components/LottieState.vue';
@@ -17,6 +17,7 @@ type Target = {
 type SelectItem = { id: number; name: string };
 type Filters = { q?: string; position_id?: string; department_id?: string; factory_id?: string };
 
+const page = usePage<{ errors: { evaluation?: string } }>();
 const props = defineProps<{
     targets: Target[];
     filters: Filters;
@@ -67,6 +68,10 @@ const pageUrl = (page: number) => {
     <EmployeeLayout title="Pilih target evaluasi">
         <template #subtitle><p class="mt-2 text-slate-600">Cari atasan berdasarkan nama, NIK, jabatan, pabrik, atau departemen.</p></template>
         <div class="space-y-4">
+            <div v-if="page.props.errors.evaluation" class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800" role="alert">
+                {{ page.props.errors.evaluation }}
+            </div>
+
             <input v-model="query" type="search" autocomplete="off" placeholder="Cari nama atau NIK" class="w-full rounded-xl border-slate-300 px-4 py-3" />
             <div class="grid gap-3 sm:grid-cols-3">
                 <select v-model="positionId" class="w-full rounded-xl border-slate-300">

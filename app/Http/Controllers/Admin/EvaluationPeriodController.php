@@ -13,9 +13,7 @@ use Inertia\Response;
 
 class EvaluationPeriodController extends Controller
 {
-    public function __construct(private readonly AuditLogger $audit)
-    {
-    }
+    public function __construct(private readonly AuditLogger $audit) {}
 
     public function index(): Response
     {
@@ -23,7 +21,8 @@ class EvaluationPeriodController extends Controller
             'periods' => EvaluationPeriod::query()
                 ->orderByDesc('year')
                 ->orderByDesc('month')
-                ->get(),
+                ->paginate(10)
+                ->withQueryString(),
         ]);
     }
 
@@ -88,7 +87,11 @@ class EvaluationPeriodController extends Controller
 
     public function destroy(EvaluationPeriod $evaluationPeriod): RedirectResponse
     {
-        abort_if($evaluationPeriod->evaluations()->exists(), 409, 'Periode sudah memiliki evaluasi.');
+        if ($evaluationPeriod->evaluations()->exists()) {
+            return to_route('admin.evaluation-periods.index')->withErrors([
+                'period' => 'Periode sudah memiliki evaluasi dan tidak dapat dihapus.',
+            ]);
+        }
 
         $snapshot = $evaluationPeriod->only(['month', 'year', 'status']);
         $evaluationPeriod->delete();

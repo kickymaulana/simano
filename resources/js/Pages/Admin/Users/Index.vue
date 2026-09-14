@@ -3,6 +3,7 @@ import { Head, Link, router } from '@inertiajs/vue3';
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
 import { route } from 'ziggy-js';
 
+type Pagination<T> = { data: T[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] };
 type User = {
     id: number;
     name: string;
@@ -17,7 +18,7 @@ type User = {
     factories?: Array<{ name: string }>;
 };
 
-defineProps<{ users: User[] }>();
+defineProps<{ users: Pagination<User> }>();
 
 const toggleActive = (user: User) => {
     const action = user.active ? 'Deactive' : 'Aktif kembali';
@@ -31,7 +32,7 @@ const toggleActive = (user: User) => {
     <Head title="User" />
     <AdminLayout title="User">
         <div class="rounded-xl bg-white p-5 shadow-sm">
-            <div v-if="!users.length" class="py-8 text-center text-slate-500">Belum ada user dibersetuju.</div>
+            <div v-if="!users.data.length" class="py-8 text-center text-slate-500">Belum ada user dibersetuju.</div>
             <div v-else class="overflow-x-auto">
                 <table class="w-full min-w-[700px] text-left text-sm">
                     <thead class="border-b border-slate-200 text-slate-500">
@@ -40,7 +41,7 @@ const toggleActive = (user: User) => {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="user in users" :key="user.id" class="border-b border-slate-100">
+                        <tr v-for="user in users.data" :key="user.id" class="border-b border-slate-100">
                             <td class="p-3 font-semibold">{{ user.name }}<small class="block font-normal text-slate-500">{{ user.email }}</small></td>
                             <td class="p-3">{{ user.nik }}</td>
                             <td class="p-3 uppercase">{{ user.role }}</td>
@@ -57,6 +58,9 @@ const toggleActive = (user: User) => {
                         </tr>
                     </tbody>
                 </table>
+            </div>
+            <div v-if="users.last_page > 1" class="mt-4 flex flex-wrap gap-2">
+                <Link v-for="link in users.links" :key="link.label" :href="link.url ?? undefined" class="rounded border px-3 py-1 text-sm" :class="{ 'bg-blue-700 text-white': link.active }" v-html="link.label" />
             </div>
         </div>
     </AdminLayout>

@@ -44,6 +44,61 @@ class AdminFeatureTest extends TestCase
         $this->assertDatabaseHas('evaluation_periods', ['month' => 9, 'year' => 2026, 'status' => 'active']);
     }
 
+    public function test_admin_lists_are_paginated(): void
+    {
+        $admin = $this->userWithRole('admin');
+        User::factory()->count(11)->create(['is_approved' => true]);
+        Department::factory()->count(11)->create();
+
+        foreach (range(2026, 2036) as $year) {
+            EvaluationPeriod::create(['month' => 1, 'year' => $year, 'status' => 'closed']);
+        }
+
+        $this->actingAs($admin)->get(route('admin.users.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('users.total', 11)->where('users.last_page', 2)->has('users.data', 10));
+        $this->actingAs($admin)->get(route('admin.departments.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('departments.total', 11)->where('departments.last_page', 2)->has('departments.data', 10));
+        $this->actingAs($admin)->get(route('admin.evaluation-periods.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->where('periods.total', 11)->where('periods.last_page', 2)->has('periods.data', 10));
+    }
+
+    public function test_period_with_evaluations_cannot_be_deleted(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $evaluator = User::factory()->create();
+        $target = User::factory()->create();
+        $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        Evaluation::create([
+            'evaluator_id' => $evaluator->id,
+            'target_id' => $target->id,
+            'evaluation_template_id' => $template->id,
+            'evaluation_period_id' => $period->id,
+            'target_category' => 'atasan',
+            'average_score' => 4,
+        ]);
+
+        $this->actingAs($admin)->delete(route('admin.evaluation-periods.destroy', $period))
+            ->assertRedirect(route('admin.evaluation-periods.index'))
+            ->assertSessionHasErrors(['period' => 'Periode sudah memiliki evaluasi dan tidak dapat dihapus.']);
+
+        $this->assertDatabaseHas('evaluation_periods', ['id' => $period->id]);
+    }
+
+    public function test_period_without_evaluations_can_be_deleted(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'closed']);
+
+        $this->actingAs($admin)->delete(route('admin.evaluation-periods.destroy', $period))
+            ->assertRedirect(route('admin.evaluation-periods.index'));
+
+        $this->assertDatabaseMissing('evaluation_periods', ['id' => $period->id]);
+    }
+
     public function test_template_rejects_duplicate_question_numbers(): void
     {
         $admin = $this->userWithRole('admin');
