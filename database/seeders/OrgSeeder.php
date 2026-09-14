@@ -23,6 +23,7 @@ class OrgSeeder extends Seeder
             'SUPERVISOR' => 4,
             'LEADER' => 5,
             'OPERATOR' => 6,
+            'UMUM' => 7,
         ];
 
         foreach ($positions as $name => $level) {
