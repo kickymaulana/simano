@@ -115,6 +115,46 @@ class AdminFeatureTest extends TestCase
         $this->assertDatabaseMissing('evaluation_templates', ['target_category' => 'atasan']);
     }
 
+    public function test_admin_can_filter_evaluation_report_by_target_organization(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $evaluator = User::factory()->create();
+        $position = Position::factory()->create();
+        $department = Department::factory()->create();
+        $factory = Factory::factory()->create();
+        $matchingTarget = User::factory()->create(['position_id' => $position->id]);
+        $matchingTarget->departments()->sync([$department->id]);
+        $matchingTarget->factories()->sync([$factory->id]);
+        $otherTarget = User::factory()->create();
+        $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'collection', 'active' => true]);
+
+        foreach ([$matchingTarget, $otherTarget] as $target) {
+            Evaluation::create([
+                'evaluator_id' => $evaluator->id,
+                'target_id' => $target->id,
+                'evaluation_template_id' => $template->id,
+                'evaluation_period_id' => $period->id,
+                'target_category' => 'collection',
+                'average_score' => 4,
+            ]);
+        }
+
+        $this->actingAs($admin)->get(route('admin.reports.evaluations', [
+            'position_id' => $position->id,
+            'department_id' => $department->id,
+            'factory_id' => $factory->id,
+        ]))->assertOk()->assertInertia(fn ($page) => $page
+            ->has('rows.data', 1)
+            ->where('rows.data.0.target.id', $matchingTarget->id)
+            ->where('filters.position_id', $position->id)
+            ->where('filters.department_id', $department->id)
+            ->where('filters.factory_id', $factory->id)
+            ->has('positions')
+            ->has('departments')
+            ->has('factories'));
+    }
+
     public function test_admin_report_does_not_expose_evaluator_identity(): void
     {
         $admin = $this->userWithRole('admin');

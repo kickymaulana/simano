@@ -1,13 +1,18 @@
 <?php
 
+use App\Http\Controllers\Admin\AttentionController;
 use App\Http\Controllers\Admin\AuditLogController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\EvaluationParticipationController;
 use App\Http\Controllers\Admin\EvaluationPeriodController;
 use App\Http\Controllers\Admin\EvaluationReportController;
 use App\Http\Controllers\Admin\EvaluationTemplateController;
 use App\Http\Controllers\Admin\FactoryController;
+use App\Http\Controllers\Admin\OrganizationScorecardController;
 use App\Http\Controllers\Admin\PendingUserController;
 use App\Http\Controllers\Admin\PositionController;
+use App\Http\Controllers\Admin\QuestionAnalysisController;
 use App\Http\Controllers\Admin\UserAdminController;
 use App\Http\Controllers\Employee\EvaluationController;
 use App\Http\Controllers\Employee\EvaluationStatusController;
@@ -36,7 +41,11 @@ Route::middleware(['auth', 'role:employee|admin|hr'])->group(function () {
 });
 
 Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/dashboard', fn () => Inertia::render('Admin/Dashboard'))->name('dashboard');
+    Route::get('/dashboard', DashboardController::class)->name('dashboard');
+    Route::get('/evaluation-participation', EvaluationParticipationController::class)->name('evaluation-participation.index');
+    Route::get('/question-analysis', QuestionAnalysisController::class)->name('question-analysis.index');
+    Route::get('/organization-scorecard', OrganizationScorecardController::class)->name('organization-scorecard.index');
+    Route::get('/attention', AttentionController::class)->name('attention.index');
     Route::get('/pending-users', [PendingUserController::class, 'index'])->name('pending-users.index');
     Route::post('/pending-users/{user}/approve', [PendingUserController::class, 'approve'])->name('pending-users.approve');
     Route::post('/pending-users/{user}/reject', [PendingUserController::class, 'reject'])->name('pending-users.reject');

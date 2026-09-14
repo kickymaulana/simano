@@ -4,11 +4,11 @@
 <body>
     <h1>Rekap Evaluasi Kinerja</h1>
     <p class="meta">Periode: {{ $period ? sprintf('%02d/%d', $period->month, $period->year) : 'Semua periode' }}</p>
-    <table><thead><tr><th>Periode</th><th>Target</th><th>Kategori</th><th>Jumlah Evaluasi</th><th>Rata-rata</th></tr></thead><tbody>
+    <table><thead><tr><th>Periode</th><th>Target</th><th>NIK</th><th>Jabatan</th><th>Departemen</th><th>Pabrik</th><th>Jumlah Evaluasi</th><th>Rata-rata</th></tr></thead><tbody>
         @forelse ($rows as $row)
-            <tr><td>{{ sprintf('%02d/%d', $row->period->month, $row->period->year) }}</td><td>{{ $row->target->name }}</td><td>{{ $row->target_category }}</td><td>{{ $row->evaluation_count }}</td><td>{{ number_format((float) $row->average_score, 2) }}</td></tr>
+            <tr><td>{{ sprintf('%02d/%d', $row->period->month, $row->period->year) }}</td><td>{{ $row->target->name }}</td><td>{{ $row->target->nik }}</td><td>{{ $row->target->position?->name ?? '-' }}</td><td>{{ $row->target->departments->pluck('name')->join(', ') ?: '-' }}</td><td>{{ $row->target->factories->pluck('name')->join(', ') ?: '-' }}</td><td>{{ $row->evaluation_count }}</td><td>{{ number_format((float) $row->average_score, 2) }}</td></tr>
         @empty
-            <tr><td colspan="5">Belum ada data evaluasi.</td></tr>
+            <tr><td colspan="8">Belum ada data evaluasi.</td></tr>
         @endforelse
     </tbody></table>
 </body>

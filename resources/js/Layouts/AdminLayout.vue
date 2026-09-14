@@ -1,9 +1,14 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3';
+import { Link, useForm, usePage } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 
-defineProps<{ title?: string }>();
+ defineProps<{ title?: string }>();
 
+const page = usePage();
+const reportPaths = ['/admin/reports/evaluations', '/admin/evaluation-participation', '/admin/question-analysis', '/admin/organization-scorecard', '/admin/attention', '/admin/audit-logs'];
+const isReportPage = computed(() => reportPaths.some((path) => page.url.startsWith(path)));
+const isReportsOpen = ref(isReportPage.value);
 const form = useForm({});
 const logout = () => form.post(route('logout'));
 </script>
@@ -23,8 +28,20 @@ const logout = () => form.post(route('logout'));
                         <Link :href="route('admin.departments.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Departemen</Link>
                         <Link :href="route('admin.evaluation-periods.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Periode evaluasi</Link>
                         <Link :href="route('admin.evaluation-templates.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Template evaluasi</Link>
-                        <Link :href="route('admin.reports.evaluations')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Rekap evaluasi</Link>
-                        <Link :href="route('admin.audit-logs.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Audit log</Link>
+                        <div>
+                            <button type="button" class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100" @click="isReportsOpen = !isReportsOpen">
+                                Laporan & Analisis
+                                <span :class="isReportsOpen ? 'rotate-180' : ''" class="transition-transform">⌄</span>
+                            </button>
+                            <div v-if="isReportsOpen" class="ml-3 space-y-1 border-l border-slate-200 pl-2">
+                                <Link :href="route('admin.reports.evaluations')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/reports/evaluations') }">Rekap evaluasi</Link>
+                                <Link :href="route('admin.evaluation-participation.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/evaluation-participation') }">Partisipasi evaluasi</Link>
+                                <Link :href="route('admin.question-analysis.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/question-analysis') }">Analisis pertanyaan</Link>
+                                <Link :href="route('admin.organization-scorecard.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/organization-scorecard') }">Scorecard organisasi</Link>
+                                <Link :href="route('admin.attention.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/attention') }">Perlu perhatian</Link>
+                                <Link :href="route('admin.audit-logs.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/audit-logs') }">Audit log</Link>
+                            </div>
+                        </div>
                         <slot name="navigation" />
                     </nav>
                     <div class="mt-auto text-xs text-slate-500">Panel administrasi</div>

@@ -1,0 +1,21 @@
+<script setup lang="ts">
+import { Head, Link, router } from '@inertiajs/vue3';
+import AdminLayout from '../../../Layouts/AdminLayout.vue';
+import { route } from 'ziggy-js';
+
+type Item = { id: number; name: string };
+type Period = { id: number; month: number; year: number; status: string };
+type Question = { question: { question_number: number; question_text: string }; response_count: number; average_score: number; score_1: number; score_2: number; score_3: number; score_4: number; score_5: number };
+type Pagination = { data: Question[]; last_page: number; links: { url: string | null; label: string; active: boolean }[] };
+const props = defineProps<{ periods: Period[]; selectedPeriod: Period | null; positions: Item[]; factories: Item[]; departments: Item[]; filters: { position_id?: number; factory_id?: number; department_id?: number }; questions: Pagination }>();
+const filters = { period: props.selectedPeriod?.id, position_id: props.filters.position_id ?? '', factory_id: props.filters.factory_id ?? '', department_id: props.filters.department_id ?? '' };
+const apply = () => router.get(route('admin.question-analysis.index'), filters, { preserveState: true, replace: true });
+const changePeriod = (event: Event) => { filters.period = Number((event.target as HTMLSelectElement).value); apply(); };
+</script>
+
+<template>
+    <Head title="Analisis pertanyaan" />
+    <AdminLayout title="Analisis pertanyaan">
+        <div class="space-y-4"><div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><label class="text-sm font-semibold">Periode<select class="mt-1 w-full rounded-lg border-slate-300" :value="selectedPeriod?.id" @change="changePeriod"><option v-for="period in periods" :key="period.id" :value="period.id">{{ period.month }}/{{ period.year }} · {{ period.status }}</option></select></label><label class="text-sm font-semibold">Jabatan<select v-model="filters.position_id" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua jabatan</option><option v-for="item in positions" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label class="text-sm font-semibold">Pabrik<select v-model="filters.factory_id" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua pabrik</option><option v-for="item in factories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label><label class="text-sm font-semibold">Departemen<select v-model="filters.department_id" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua departemen</option><option v-for="item in departments" :key="item.id" :value="item.id">{{ item.name }}</option></select></label></div><button type="button" class="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white" @click="apply">Terapkan filter</button><div class="overflow-x-auto rounded-xl border border-slate-200 bg-white"><table class="w-full min-w-[850px] text-left text-sm"><thead class="border-b border-slate-200 bg-slate-50 text-slate-600"><tr><th class="p-4">Pertanyaan</th><th class="p-4">Jawaban</th><th class="p-4">Rata-rata</th><th class="p-4">Skor 1</th><th class="p-4">2</th><th class="p-4">3</th><th class="p-4">4</th><th class="p-4">5</th></tr></thead><tbody class="divide-y divide-slate-100"><tr v-for="item in questions.data" :key="item.question.question_number"><td class="p-4"><strong>{{ item.question.question_number }}.</strong> {{ item.question.question_text }}</td><td class="p-4">{{ item.response_count }}</td><td class="p-4 font-semibold">{{ Number(item.average_score).toFixed(2) }}</td><td class="p-4">{{ item.score_1 }}</td><td class="p-4">{{ item.score_2 }}</td><td class="p-4">{{ item.score_3 }}</td><td class="p-4">{{ item.score_4 }}</td><td class="p-4">{{ item.score_5 }}</td></tr><tr v-if="!questions.data.length"><td colspan="8" class="p-6 text-center text-slate-600">Belum ada jawaban evaluasi.</td></tr></tbody></table></div><div v-if="questions.last_page > 1" class="flex flex-wrap gap-2"><Link v-for="link in questions.links" :key="link.label" :href="link.url ?? undefined" class="rounded border px-3 py-1 text-sm" :class="{ 'bg-blue-700 text-white': link.active }" v-html="link.label" /></div></div>
+    </AdminLayout>
+</template>

@@ -24,8 +24,12 @@ class EvaluationReportRequest extends FormRequest
     {
         return [
             'period' => ['nullable', 'integer', 'exists:evaluation_periods,id'],
-            'category' => ['nullable', 'string', 'max:100'],
             'target' => ['nullable', 'integer', 'exists:users,id'],
+            'position_id' => ['nullable', 'integer', 'exists:positions,id'],
+            'factory_id' => ['nullable', 'integer', 'exists:factories,id'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'group_by' => ['nullable', 'string', 'in:department,factory,position'],
+            'threshold' => ['nullable', 'numeric', 'min:1', 'max:5'],
             'per_page' => ['nullable', 'integer', 'in:10,25,50'],
         ];
     }
