@@ -9,6 +9,7 @@ use App\Models\Position;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -59,13 +60,24 @@ class PendingRoleController extends Controller
             'factory_ids.*' => ['integer', 'exists:factories,id'],
         ]);
 
+        $position = Position::findOrFail($validated['position_id']);
+        $multipleOrganization = in_array(strtoupper($position->name), ['DIREKSI', 'GM/FM', 'FM', 'SEKRETARIS', 'MANAGER'], true);
+        if (! $multipleOrganization && (count($validated['department_ids']) > 1 || count($validated['factory_ids']) > 1)) {
+            throw ValidationException::withMessages([
+                'position_id' => 'Jabatan ini hanya boleh memilih satu departemen dan satu pabrik.',
+            ]);
+        }
+
+        $departmentIds = $multipleOrganization ? $validated['department_ids'] : [$validated['department_ids'][0]];
+        $factoryIds = $multipleOrganization ? $validated['factory_ids'] : [$validated['factory_ids'][0]];
+
         $user->update([
             'requested_role' => $validated['role'],
             'requested_position_id' => $validated['position_id'],
-            'requested_department_id' => $validated['department_ids'][0],
+            'requested_department_id' => $departmentIds[0],
         ]);
-        $user->requestedDepartments()->sync($validated['department_ids']);
-        $user->requestedFactories()->sync($validated['factory_ids']);
+        $user->requestedDepartments()->sync($departmentIds);
+        $user->requestedFactories()->sync($factoryIds);
         $request->session()->forget('pending_user_id');
 
         return redirect()->route('sso.login')->withErrors([
