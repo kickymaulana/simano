@@ -40,6 +40,7 @@ class UserAdminController extends Controller
     public function update(UserAdminRequest $request, User $user): RedirectResponse
     {
         $data = $request->validated();
+        abort_if($request->user()->is($user) && $data['role'] !== 'admin', 422, 'Admin tidak dapat menurunkan role sendiri.');
         $departmentIds = $data['department_ids'] ?? null;
         unset($data['department_ids'], $data['factory_ids']);
         if ($departmentIds) {
@@ -47,7 +48,10 @@ class UserAdminController extends Controller
         }
 
         DB::transaction(function () use ($data, $departmentIds, $request, $user): void {
-            $user->update($data);
+            $role = $data['role'];
+            unset($data['role']);
+            $user->update([...$data, 'role' => $role]);
+            $user->syncRoles([$role]);
             if ($departmentIds !== null) {
                 $user->departments()->sync($departmentIds);
             }

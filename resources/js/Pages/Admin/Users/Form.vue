@@ -6,6 +6,7 @@ import { route } from 'ziggy-js';
 type User = {
     id: number;
     name: string;
+    role: string;
     position_id?: number | null;
     department_id?: number | null;
     departments?: Array<{ id: number; name: string }>;
@@ -17,6 +18,7 @@ const props = defineProps<{ user: User; positions: Option[]; departments: Option
 
 const form = useForm({
     name: props.user.name,
+    role: props.user.role,
     position_id: props.user.position_id ?? null,
     department_ids: props.user.departments?.map((department) => department.id) ?? [],
     factory_ids: props.user.factories?.map((factory) => factory.id) ?? [],
@@ -39,6 +41,14 @@ const toggleDepartment = (id: number) => {
             <label class="block text-sm font-semibold">Nama
                 <input v-model="form.name" type="text" class="mt-1 w-full rounded-lg border-slate-300" />
                 <span v-if="form.errors.name" class="text-xs text-red-600">{{ form.errors.name }}</span>
+            </label>
+            <label class="block text-sm font-semibold">Role
+                <select v-model="form.role" class="mt-1 w-full rounded-lg border-slate-300">
+                    <option value="employee">Employee</option>
+                    <option value="hr">HR</option>
+                    <option value="admin">Admin</option>
+                </select>
+                <span v-if="form.errors.role" class="text-xs text-red-600">{{ form.errors.role }}</span>
             </label>
             <label class="block text-sm font-semibold">Jabatan
                 <select v-model="form.position_id" class="mt-1 w-full rounded-lg border-slate-300">

@@ -40,6 +40,7 @@ class UserAdminFeatureTest extends TestCase
     public function test_admin_updates_user_profile_and_relations(): void
     {
         $admin = $this->userWithRole('admin');
+        Role::firstOrCreate(['name' => 'hr', 'guard_name' => 'web']);
         $user = User::factory()->create(['is_approved' => true]);
         $position = Position::factory()->create();
         $department = Department::factory()->create();
@@ -48,6 +49,7 @@ class UserAdminFeatureTest extends TestCase
 
         $response = $this->actingAs($admin)->put(route('admin.users.update', $user), [
             'name' => 'Nama Nieuwe',
+            'role' => 'hr',
             'position_id' => $position->id,
             'department_ids' => [$department->id, $departmentTwo->id],
             'factory_ids' => [$factory->id],
@@ -57,6 +59,8 @@ class UserAdminFeatureTest extends TestCase
         $user->refresh();
 
         $this->assertEquals('Nama Nieuwe', $user->name);
+        $this->assertEquals('hr', $user->role);
+        $this->assertTrue($user->hasRole('hr'));
         $this->assertEquals($position->id, $user->position_id);
         $this->assertEquals($department->id, $user->department_id);
         $this->assertTrue($user->departments()->whereKey($department->id)->exists());

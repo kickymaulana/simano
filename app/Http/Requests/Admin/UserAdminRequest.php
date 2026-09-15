@@ -24,6 +24,7 @@ class UserAdminRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:100'],
+            'role' => ['required', 'string', 'in:employee,hr,admin'],
             'position_id' => ['nullable', 'integer', 'exists:positions,id'],
             'department_ids' => ['sometimes', 'array'],
             'department_ids.*' => ['integer', 'exists:departments,id'],
