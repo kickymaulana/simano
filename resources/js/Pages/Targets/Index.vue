@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import EmployeeLayout from '../../Layouts/EmployeeLayout.vue';
 import LottieState from '../../Components/LottieState.vue';
 import { route } from 'ziggy-js';
@@ -31,6 +31,18 @@ const query = ref(props.filters.q ?? '');
 const positionId = ref(props.filters.position_id ?? '');
 const departmentId = ref(props.filters.department_id ?? '');
 const factoryId = ref(props.filters.factory_id ?? '');
+const selectedTarget = ref<Target | null>(null);
+
+const closePreview = () => {
+    selectedTarget.value = null;
+};
+
+const handleEscape = (event: KeyboardEvent) => {
+    if (event.key === 'Escape') closePreview();
+};
+
+onMounted(() => window.addEventListener('keydown', handleEscape));
+onBeforeUnmount(() => window.removeEventListener('keydown', handleEscape));
 
 let timer: ReturnType<typeof setTimeout>;
 watch([positionId, departmentId, factoryId], () => applyFilters());
@@ -93,8 +105,10 @@ const pageUrl = (page: number) => {
             <LottieState v-if="!targets.length" title="Target tidak ditemukan" message="Coba ubah kata kunci atau filter." />
             <div v-else class="space-y-2">
                 <Link v-for="target in targets" :key="target.id" :href="route('evaluations.create', target.id)" class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <img v-if="target.avatar_url" :src="target.avatar_url" :alt="target.name" class="h-11 w-11 rounded-full object-cover" />
-                    <span v-else class="flex h-11 w-11 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-700">{{ target.name.slice(0, 1) }}</span>
+                    <button v-if="target.avatar_url" type="button" class="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" :aria-label="`Lihat foto ${target.name}`" @click.prevent.stop="selectedTarget = target">
+                        <img :src="target.avatar_url" :alt="target.name" class="h-11 w-11 rounded-full object-cover" />
+                    </button>
+                    <span v-else class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-700">{{ target.name.slice(0, 1) }}</span>
                     <span class="min-w-0">
                         <strong class="block">{{ target.name }}</strong>
                         <small class="block text-slate-500">{{ target.position?.name ?? 'Tanpa jabatan' }}</small>
@@ -115,6 +129,13 @@ const pageUrl = (page: number) => {
                     {{ page }}
                 </Link>
             </nav>
+        </div>
+        <div v-if="selectedTarget" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" :aria-label="`Foto ${selectedTarget.name}`" @click.self="closePreview">
+            <div class="relative max-h-[90vh] max-w-[90vw] rounded-2xl bg-white p-3 shadow-2xl">
+                <button type="button" class="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-slate-900/70 text-xl text-white hover:bg-slate-900" :aria-label="`Tutup foto ${selectedTarget.name}`" @click="closePreview">&times;</button>
+                <img :src="selectedTarget.avatar_url!" :alt="selectedTarget.name" class="max-h-[85vh] max-w-[85vw] rounded-xl object-contain" />
+                <p class="px-2 pb-1 pt-3 text-center font-semibold text-slate-800">{{ selectedTarget.name }}</p>
+            </div>
         </div>
     </EmployeeLayout>
 </template>
