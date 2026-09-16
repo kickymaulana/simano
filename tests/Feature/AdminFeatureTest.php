@@ -176,6 +176,23 @@ class AdminFeatureTest extends TestCase
         $response->assertOk()->assertDontSee('evaluator_id')->assertDontSee('NIK-EVALUATOR-SECRET');
     }
 
+    public function test_pending_users_page_includes_nik(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $position = Position::factory()->create(['name' => 'MANAGER']);
+        User::factory()->create([
+            'nik' => 'NIK-PENDING-001',
+            'is_approved' => false,
+            'requested_role' => 'employee',
+            'requested_position_id' => $position->id,
+        ]);
+
+        $this->actingAs($admin)->get(route('admin.pending-users.index'))
+            ->assertOk()
+            ->assertSee('NIK-PENDING-001')
+            ->assertSee('MANAGER');
+    }
+
     public function test_approving_pending_user_syncs_spatie_role_and_clears_request(): void
     {
         $admin = $this->userWithRole('admin');

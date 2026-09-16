@@ -3,8 +3,12 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\Department;
+use App\Models\Factory;
+use App\Models\Position;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -19,8 +23,51 @@ class PendingUserController extends Controller
                 ->where('is_approved', false)
                 ->whereNotNull('requested_role')
                 ->latest('updated_at')
-                ->get(['id', 'nik', 'name', 'email', 'requested_role', 'created_at']),
+                ->paginate(10, ['id', 'nik', 'name', 'email', 'avatar_url', 'requested_role', 'requested_position_id', 'created_at'])
+                ->through(fn (User $user): User => $user->makeVisible(['nik'])),
         ]);
+    }
+
+    public function edit(User $user): Response
+    {
+        abort_unless(! $user->is_approved && $user->requested_role, 404);
+
+        return Inertia::render('Admin/PendingUsers/Form', [
+            'user' => $user->load(['requestedPosition', 'requestedDepartments', 'requestedFactories']),
+            'positions' => Position::query()->orderBy('level')->orderBy('name')->get(['id', 'name']),
+            'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
+            'factories' => Factory::query()->orderBy('name')->get(['id', 'name']),
+        ]);
+    }
+
+    public function update(Request $request, User $user): RedirectResponse
+    {
+        abort_unless(! $user->is_approved && $user->requested_role, 404);
+
+        $validated = $request->validate([
+            'role' => ['required', 'in:employee,admin,hr'],
+            'position_id' => ['required', 'exists:positions,id'],
+            'department_ids' => ['required', 'array', 'min:1'],
+            'department_ids.*' => ['integer', 'exists:departments,id'],
+            'factory_ids' => ['required', 'array', 'min:1'],
+            'factory_ids.*' => ['integer', 'exists:factories,id'],
+        ]);
+        $position = Position::findOrFail($validated['position_id']);
+        $multiple = in_array(strtoupper($position->name), ['DIREKSI', 'GM/FM', 'FM', 'SEKRETARIS', 'MANAGER'], true);
+        $departmentIds = $multiple ? $validated['department_ids'] : [$validated['department_ids'][0]];
+        $factoryIds = $multiple ? $validated['factory_ids'] : [$validated['factory_ids'][0]];
+
+        DB::transaction(function () use ($user, $validated, $departmentIds, $factoryIds): void {
+            $user->update([
+                'requested_role' => $validated['role'],
+                'requested_position_id' => $validated['position_id'],
+                'requested_department_id' => $departmentIds[0],
+            ]);
+            $user->requestedDepartments()->sync($departmentIds);
+            $user->requestedFactories()->sync($factoryIds);
+        });
+
+        return to_route('admin.pending-users.index')->with('success', 'Pengajuan user diperbarui.');
     }
 
     public function approve(User $user): RedirectResponse

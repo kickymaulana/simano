@@ -47,6 +47,8 @@ Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->g
     Route::get('/organization-scorecard', OrganizationScorecardController::class)->name('organization-scorecard.index');
     Route::get('/attention', AttentionController::class)->name('attention.index');
     Route::get('/pending-users', [PendingUserController::class, 'index'])->name('pending-users.index');
+    Route::get('/pending-users/{user}/edit', [PendingUserController::class, 'edit'])->name('pending-users.edit');
+    Route::put('/pending-users/{user}', [PendingUserController::class, 'update'])->name('pending-users.update');
     Route::post('/pending-users/{user}/approve', [PendingUserController::class, 'approve'])->name('pending-users.approve');
     Route::post('/pending-users/{user}/reject', [PendingUserController::class, 'reject'])->name('pending-users.reject');
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');
