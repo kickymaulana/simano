@@ -22,7 +22,8 @@ class UserAdminController extends Controller
                 ->with(['position', 'departments', 'factories'])
                 ->where('is_approved', true)
                 ->latest('created_at')
-                ->paginate(10, ['id', 'name', 'email', 'nik', 'role', 'position_id', 'department_id', 'active', 'created_at'])
+                ->paginate(10, ['id', 'name', 'email', 'nik', 'avatar_url', 'role', 'position_id', 'department_id', 'active', 'created_at'])
+                ->through(fn (User $user): User => $user->makeVisible(['nik']))
                 ->withQueryString(),
         ]);
     }
