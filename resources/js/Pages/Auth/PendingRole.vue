@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, useForm } from '@inertiajs/vue3';
-import { computed, watch } from 'vue';
+
 import { route } from 'ziggy-js';
 
 type Item = { id: number; name: string };
@@ -14,19 +14,7 @@ const props = defineProps<{
 const form = useForm({ role: '', position_id: '', department_ids: [] as number[], factory_ids: [] as number[] });
 const roles = [
     { value: 'employee', label: 'Employee', description: 'Mengisi evaluasi kinerja.' },
-    { value: 'hr', label: 'HR', description: 'Mengelola periode, template, dan laporan.' },
-    { value: 'admin', label: 'Admin', description: 'Mengelola seluruh fitur SIMANO.' },
 ];
-const multipleOrganizationPositions = ['DIREKSI', 'GM/FM', 'FM', 'SEKRETARIS', 'MANAGER'];
-const selectedPosition = computed(() => props.positions.find((position) => String(position.id) === String(form.position_id)));
-const canSelectMultipleOrganization = computed(() => multipleOrganizationPositions.includes((selectedPosition.value?.name ?? '').toUpperCase()));
-
-watch(canSelectMultipleOrganization, (allowed) => {
-    if (!allowed) {
-        form.department_ids = form.department_ids.slice(0, 1);
-        form.factory_ids = form.factory_ids.slice(0, 1);
-    }
-});
 
 const toggleFactory = (id: number) => {
     const index = form.factory_ids.indexOf(id);
@@ -81,7 +69,7 @@ const toggleDepartment = (id: number) => {
                     <span v-if="form.errors.position_id" class="text-xs text-red-600">{{ form.errors.position_id }}</span>
                 </label>
 
-                <div class="text-sm font-semibold">Departemen {{ canSelectMultipleOrganization ? '(bisa lebih dari satu)' : '(pilih satu)' }}
+                <div class="text-sm font-semibold">Departemen (bisa lebih dari satu)
                     <div class="mt-1 space-y-2">
                         <label
                             v-for="department in departments"
@@ -89,14 +77,14 @@ const toggleDepartment = (id: number) => {
                             class="flex cursor-pointer items-center gap-3 rounded-xl border p-3"
                             :class="form.department_ids.includes(department.id) ? 'border-blue-600 bg-blue-50' : 'border-slate-200'"
                         >
-                            <input type="checkbox" :checked="form.department_ids.includes(department.id)" class="h-4 w-4" :disabled="!canSelectMultipleOrganization && form.department_ids.length === 1 && !form.department_ids.includes(department.id)" @change="toggleDepartment(department.id)" />
+                            <input type="checkbox" :checked="form.department_ids.includes(department.id)" class="h-4 w-4" @change="toggleDepartment(department.id)" />
                             <span>{{ department.name }}</span>
                         </label>
                     </div>
                     <span v-if="form.errors.department_ids" class="text-xs text-red-600">{{ form.errors.department_ids }}</span>
                 </div>
 
-                <div class="text-sm font-semibold">Pabrik {{ canSelectMultipleOrganization ? '(bisa lebih dari satu)' : '(pilih satu)' }}
+                <div class="text-sm font-semibold">Pabrik (bisa lebih dari satu)
                     <div class="mt-1 space-y-2">
                         <label
                             v-for="factory in factories"
@@ -104,7 +92,7 @@ const toggleDepartment = (id: number) => {
                             class="flex cursor-pointer items-center gap-3 rounded-xl border p-3"
                             :class="form.factory_ids.includes(factory.id) ? 'border-blue-600 bg-blue-50' : 'border-slate-200'"
                         >
-                            <input type="checkbox" :checked="form.factory_ids.includes(factory.id)" class="h-4 w-4" :disabled="!canSelectMultipleOrganization && form.factory_ids.length === 1 && !form.factory_ids.includes(factory.id)" @change="toggleFactory(factory.id)" />
+                            <input type="checkbox" :checked="form.factory_ids.includes(factory.id)" class="h-4 w-4" @change="toggleFactory(factory.id)" />
                             <span>{{ factory.name }}</span>
                         </label>
                     </div>

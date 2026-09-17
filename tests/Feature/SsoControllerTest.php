@@ -92,14 +92,16 @@ class SsoControllerTest extends TestCase
         $user = User::factory()->create(['is_approved' => false, 'requested_role' => null]);
         $position = Position::factory()->create();
         $department = Department::factory()->create();
+        $departmentTwo = Department::factory()->create();
         $factory = Factory::factory()->create();
+        $factoryTwo = Factory::factory()->create();
 
         $this->withSession(['pending_user_id' => $user->id])
             ->post(route('pending-role.store'), [
                 'role' => 'employee',
                 'position_id' => $position->id,
-                'department_ids' => [$department->id],
-                'factory_ids' => [$factory->id],
+                'department_ids' => [$department->id, $departmentTwo->id],
+                'factory_ids' => [$factory->id, $factoryTwo->id],
             ])
             ->assertRedirect(route('sso.login'))
             ->assertSessionMissing('pending_user_id')
@@ -114,7 +116,28 @@ class SsoControllerTest extends TestCase
             'is_approved' => false,
         ]);
         $this->assertDatabaseHas('requested_factory_user', ['user_id' => $user->id, 'factory_id' => $factory->id]);
+        $this->assertDatabaseHas('requested_factory_user', ['user_id' => $user->id, 'factory_id' => $factoryTwo->id]);
         $this->assertDatabaseHas('requested_department_user', ['user_id' => $user->id, 'department_id' => $department->id]);
+        $this->assertDatabaseHas('requested_department_user', ['user_id' => $user->id, 'department_id' => $departmentTwo->id]);
+    }
+
+    public function test_role_request_rejects_non_employee_role(): void
+    {
+        $user = User::factory()->create(['is_approved' => false, 'requested_role' => null]);
+        $position = Position::factory()->create();
+        $department = Department::factory()->create();
+        $factory = Factory::factory()->create();
+
+        $this->withSession(['pending_user_id' => $user->id])
+            ->from(route('pending-role'))
+            ->post(route('pending-role.store'), [
+                'role' => 'hr',
+                'position_id' => $position->id,
+                'department_ids' => [$department->id],
+                'factory_ids' => [$factory->id],
+            ])
+            ->assertRedirect(route('pending-role'))
+            ->assertSessionHasErrors('role');
     }
 
     public function test_approved_callback_authenticates_and_preserves_intended_redirect(): void
