@@ -185,6 +185,10 @@ class AdminFeatureTest extends TestCase
         $this->actingAs($admin)->get(route('admin.reports.evaluations.atasan', ['period' => $period->id, 'target' => $target->id]))
             ->assertOk()
             ->assertInertia(fn ($page) => $page->component('Admin/Reports/Atasan')->where('selectedTarget.id', $target->id));
+
+        $this->actingAs($admin)->get(route('admin.reports.evaluations.atasan.evaluators', ['period' => $period->id, 'target' => $target->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/Reports/Evaluators')->where('target.id', $target->id)->has('evaluators.data'));
     }
 
     public function test_atasan_evaluation_report_pdf_uses_target_nik_as_filename(): void

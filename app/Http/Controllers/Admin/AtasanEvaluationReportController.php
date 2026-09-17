@@ -26,13 +26,18 @@ class AtasanEvaluationReportController extends Controller
         $target = User::query()->with(['position', 'departments', 'factories'])->find($validated['target'] ?? null);
         $rows = collect();
         $evaluatorCount = 0;
+        $evaluators = collect();
 
         if ($period && $target) {
-            $evaluatorCount = Evaluation::query()
+            $evaluators = Evaluation::query()
+                ->with(['evaluator.position:id,name', 'evaluator.departments:id,name'])
                 ->where('evaluation_period_id', $period->id)
                 ->where('target_id', $target->id)
-                ->distinct('evaluator_id')
-                ->count('evaluator_id');
+                ->get()
+                ->unique('evaluator_id')
+                ->map(fn (Evaluation $evaluation): array => ['id' => $evaluation->evaluator->id, 'name' => $evaluation->evaluator->name, 'nik' => $evaluation->evaluator->nik, 'position' => $evaluation->evaluator->position?->name])
+                ->values();
+            $evaluatorCount = $evaluators->count();
             $rows = EvaluationDetail::query()
                 ->selectRaw('question_id, COUNT(*) as response_count, SUM(score) as total_score, SUM(score = 1) as score_1, SUM(score = 2) as score_2, SUM(score = 3) as score_3, SUM(score = 4) as score_4, SUM(score = 5) as score_5')
                 ->with('question:id,question_number,question_text')
@@ -62,6 +67,38 @@ class AtasanEvaluationReportController extends Controller
             'rows' => $rows,
             'evaluatorCount' => $evaluatorCount,
             'filters' => ['period' => $validated['period'] ?? null, 'target' => $validated['target'] ?? null],
+        ]);
+    }
+
+    public function evaluators(Request $request): Response
+    {
+        $validated = $request->validate([
+            'period' => ['required', 'integer', 'exists:evaluation_periods,id'],
+            'target' => ['required', 'integer', 'exists:users,id'],
+        ]);
+        $period = EvaluationPeriod::findOrFail($validated['period']);
+        $target = User::query()->with('position:id,name')->findOrFail($validated['target']);
+        $evaluators = Evaluation::query()
+            ->with(['evaluator.position:id,name', 'evaluator.departments:id,name'])
+            ->where('evaluation_period_id', $period->id)
+            ->where('target_id', $target->id)
+            ->latest('submitted_at')
+            ->paginate(20)
+            ->through(fn (Evaluation $evaluation): array => [
+                'id' => $evaluation->evaluator->id,
+                'name' => $evaluation->evaluator->name,
+                'avatar_url' => $evaluation->evaluator->avatar_url,
+                'nik' => $evaluation->evaluator->nik,
+                'position' => $evaluation->evaluator->position?->name,
+                'departments' => $evaluation->evaluator->departments->pluck('name')->join(', ') ?: null,
+                'submitted_at' => $evaluation->submitted_at?->format('d/m/Y H:i'),
+            ]);
+
+        return Inertia::render('Admin/Reports/Evaluators', [
+            'period' => $period->only(['id', 'month', 'year']),
+            'target' => $target->only(['id', 'name', 'nik']),
+            'targetPosition' => $target->position?->only(['id', 'name']),
+            'evaluators' => $evaluators,
         ]);
     }
 

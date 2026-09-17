@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Head, router } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
 import { route } from 'ziggy-js';
@@ -29,11 +29,11 @@ const average = (score: number) => {
                         <button v-for="target in filteredTargets" :key="target.id" type="button" class="block w-full px-3 py-2 text-left hover:bg-blue-50" @click="filters.target = target.id; targetSearch = target.name; showSuggestions = false"><span class="font-semibold">{{ target.name }}</span><small v-if="target.position" class="block text-slate-500">{{ target.position.name }}</small></button>
                     </div>
                 </label><div class="flex items-end gap-2"><button type="button" class="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white" @click="apply">Tampilkan laporan</button><button type="button" class="rounded-lg border border-slate-300 px-4 py-2 font-semibold" @click="printReport">Print</button></div></div>
-            <div v-if="selectedTarget" class="report-content rounded-xl bg-white p-5"><div class="flex items-center gap-3"><img v-if="selectedTarget.avatar_url" :src="selectedTarget.avatar_url" :alt="selectedTarget.name" class="h-14 w-14 rounded-full object-cover" /><span v-else class="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700">{{ selectedTarget.name.slice(0, 1) }}</span><div><h2 class="text-lg font-bold">{{ selectedTarget.name }}<span v-if="targetPosition"> - {{ targetPosition.name }}</span></h2><p class="text-sm text-slate-500">{{ selectedPeriod?.month }}/{{ selectedPeriod?.year }} · {{ selectedTarget.nik ?? '-' }} · Jumlah Penilai: {{ evaluatorCount }} orang</p></div></div></div>
+            <div v-if="selectedTarget" class="report-content rounded-xl bg-white p-5"><div class="flex items-center gap-3"><img v-if="selectedTarget.avatar_url" :src="selectedTarget.avatar_url" :alt="selectedTarget.name" class="h-14 w-14 rounded-full object-cover" /><span v-else class="flex h-14 w-14 items-center justify-center rounded-full bg-blue-100 text-xl font-bold text-blue-700">{{ selectedTarget.name.slice(0, 1) }}</span><div><h2 class="text-lg font-bold">{{ selectedTarget.name }}<span v-if="targetPosition"> - {{ targetPosition.name }}</span></h2><p class="text-sm text-slate-500">{{ selectedPeriod?.month }}/{{ selectedPeriod?.year }} · {{ selectedTarget.nik ?? '-' }} · <Link :href="route('admin.reports.evaluations.atasan.evaluators', { period: selectedPeriod?.id, target: selectedTarget.id })" class="no-print font-semibold text-blue-700 underline">Jumlah Penilai: {{ evaluatorCount }} orang</Link><span class="hidden print:inline">Jumlah Penilai: {{ evaluatorCount }} orang</span></p></div></div></div>
             <div v-if="!selectedTarget || !rows.length" class="rounded-xl bg-white p-8 text-center text-slate-500">Pilih periode dan atasan untuk melihat laporan.</div>
             <div v-else class="report-content overflow-x-auto rounded-xl border border-slate-200 bg-white"><table class="w-full min-w-[1050px] text-left text-sm"><thead class="bg-slate-50 text-slate-600"><tr><th rowspan="2" class="p-3">No.</th><th rowspan="2" class="p-3">Pertanyaan</th><th colspan="5" class="p-3 text-center">Persentase Jawaban</th></tr><tr><th v-for="score in [5, 4, 3, 2, 1]" :key="score" class="p-3 text-center">{{ score }}</th></tr></thead><tbody class="divide-y divide-slate-100"><tr v-for="row in rows" :key="row.question_number"><td class="p-3">{{ row.question_number }}</td><td class="p-3">{{ row.question_text }}</td><td v-for="score in [5, 4, 3, 2, 1]" :key="score" class="p-3 text-center">{{ row.percentages[String(score)] }}%</td></tr><tr class="bg-slate-50 font-bold"><td colspan="2" class="p-3">Average</td><td v-for="score in [5, 4, 3, 2, 1]" :key="score" class="p-3 text-center">{{ average(score) }}%</td></tr></tbody></table><div class="p-5 text-sm leading-7"><p>*). Berikut ini penilaian BAWAHAN ANDA terhadap Anda sebagai Atasan</p><p>*). Mohon untuk diperbaiki untuk setiap item yang masih kurang</p><p>*). Penilaian ini akan kita laksanakan kembali 2 bulan lagi</p><p>*). Target Untuk Nilai 4 &amp; 5 Minimal 80%</p></div></div>
-        </div>
-    </AdminLayout>
+         </div>
+     </AdminLayout>
 </template>
 
 <style>
