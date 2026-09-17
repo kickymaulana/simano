@@ -11,15 +11,18 @@ type User = {
     department_id?: number | null;
     departments?: Array<{ id: number; name: string }>;
     factories?: Array<{ id: number; name: string }>;
+    evaluation_template_id?: number | null;
 };
 type Option = { id: number; name: string };
+type EvaluationTemplateOption = { id: number; target_category: string; active: boolean };
 
-const props = defineProps<{ user: User; positions: Option[]; departments: Option[]; factories: Option[] }>();
+const props = defineProps<{ user: User; positions: Option[]; departments: Option[]; factories: Option[]; evaluationTemplates: EvaluationTemplateOption[] }>();
 
 const form = useForm({
     name: props.user.name,
     role: props.user.role,
     position_id: props.user.position_id ?? null,
+    evaluation_template_id: props.user.evaluation_template_id ?? null,
     department_ids: props.user.departments?.map((department) => department.id) ?? [],
     factory_ids: props.user.factories?.map((factory) => factory.id) ?? [],
 });
@@ -56,6 +59,10 @@ const toggleDepartment = (id: number) => {
                     <option v-for="position in positions" :key="position.id" :value="position.id">{{ position.name }}</option>
                 </select>
                 <span v-if="form.errors.position_id" class="text-xs text-red-600">{{ form.errors.position_id }}</span>
+            </label>
+            <label class="block text-sm font-semibold">Template evaluasi target
+                <select v-model="form.evaluation_template_id" class="mt-1 w-full rounded-lg border-slate-300"><option :value="null">Belum dipilih</option><option v-for="template in evaluationTemplates" :key="template.id" :value="template.id">{{ template.target_category }}{{ template.active ? '' : ' (Nonaktif)' }}</option></select>
+                <span v-if="form.errors.evaluation_template_id" class="text-xs text-red-600">{{ form.errors.evaluation_template_id }}</span>
             </label>
             <fieldset class="block text-sm font-semibold">Departemen (bisa lebih dari satu)
                 <label v-for="department in departments" :key="department.id" class="mt-1 flex items-center gap-2">

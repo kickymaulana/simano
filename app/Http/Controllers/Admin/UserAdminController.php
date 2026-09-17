@@ -5,24 +5,48 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UserAdminRequest;
 use App\Models\Department;
+use App\Models\EvaluationTemplate;
 use App\Models\Factory;
 use App\Models\Position;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class UserAdminController extends Controller
 {
-    public function index(): Response
+    public function index(Request $request): Response
     {
+        $filters = $request->validate([
+            'q' => ['nullable', 'string', 'max:100'],
+            'role' => ['nullable', 'in:employee,hr,admin'],
+            'position_id' => ['nullable', 'integer', 'exists:positions,id'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'factory_id' => ['nullable', 'integer', 'exists:factories,id'],
+            'evaluation_template_id' => ['nullable', 'integer', 'exists:evaluation_templates,id'],
+            'active' => ['nullable', 'boolean'],
+        ]);
+
         return Inertia::render('Admin/Users/Index', [
+            'filters' => $filters,
+            'positions' => Position::query()->orderBy('name')->get(['id', 'name']),
+            'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
+            'factories' => Factory::query()->orderBy('name')->get(['id', 'name']),
+            'evaluationTemplates' => EvaluationTemplate::query()->orderBy('target_category')->get(['id', 'target_category']),
             'users' => User::query()
-                ->with(['position', 'departments', 'factories'])
+                ->with(['position', 'departments', 'factories', 'evaluationTemplate'])
                 ->where('is_approved', true)
+                ->when($filters['q'] ?? null, fn ($query, string $q) => $query->where(fn ($query) => $query->where('name', 'like', "%{$q}%")->orWhere('nik', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%")))
+                ->when($filters['role'] ?? null, fn ($query, string $role) => $query->where('role', $role))
+                ->when($filters['position_id'] ?? null, fn ($query, int $id) => $query->where('position_id', $id))
+                ->when($filters['department_id'] ?? null, fn ($query, int $id) => $query->whereHas('departments', fn ($query) => $query->whereKey($id)))
+                ->when($filters['factory_id'] ?? null, fn ($query, int $id) => $query->whereHas('factories', fn ($query) => $query->whereKey($id)))
+                ->when($filters['evaluation_template_id'] ?? null, fn ($query, int $id) => $query->where('evaluation_template_id', $id))
+                ->when(array_key_exists('active', $filters) && $filters['active'] !== null, fn ($query) => $query->where('active', $filters['active']))
                 ->latest('created_at')
-                ->paginate(10, ['id', 'name', 'email', 'nik', 'avatar_url', 'role', 'position_id', 'department_id', 'active', 'created_at'])
+                ->paginate(10, ['id', 'name', 'email', 'nik', 'avatar_url', 'role', 'position_id', 'department_id', 'evaluation_template_id', 'active', 'created_at'])
                 ->through(fn (User $user): User => $user->makeVisible(['nik']))
                 ->withQueryString(),
         ]);
@@ -35,6 +59,7 @@ class UserAdminController extends Controller
             'positions' => Position::query()->orderBy('name')->get(['id', 'name']),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
             'factories' => Factory::query()->orderBy('name')->get(['id', 'name']),
+            'evaluationTemplates' => EvaluationTemplate::query()->orderBy('target_category')->get(['id', 'target_category', 'active']),
         ]);
     }
 

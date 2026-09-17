@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\StoreEvaluationRequest;
 use App\Models\Evaluation;
 use App\Models\EvaluationPeriod;
-use App\Models\EvaluationTemplate;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Illuminate\Database\UniqueConstraintViolationException;
@@ -17,16 +16,14 @@ use Inertia\Response;
 
 class EvaluationController extends Controller
 {
-    public function __construct(private readonly AuditLogger $audit)
-    {
-    }
+    public function __construct(private readonly AuditLogger $audit) {}
 
     public function create(User $target): Response|RedirectResponse
     {
         abort_if(! $target->active, 404);
 
         $period = EvaluationPeriod::active()->first();
-        $template = EvaluationTemplate::query()->where('active', true)->with('activeQuestions')->first();
+        $template = $target->evaluationTemplate()->where('active', true)->with('activeQuestions')->first();
 
         if (! $period || ! $template) {
             return to_route('targets.index')->withErrors(['evaluation' => 'Periode atau template evaluasi belum aktif.']);
@@ -55,7 +52,7 @@ class EvaluationController extends Controller
         abort_if($target->id === $request->user()->id, 422, 'Tidak dapat menilai diri sendiri.');
 
         $period = EvaluationPeriod::active()->firstOrFail();
-        $template = EvaluationTemplate::query()->whereKey($data['template_id'])->where('active', true)->with('activeQuestions')->firstOrFail();
+        $template = $target->evaluationTemplate()->whereKey($data['template_id'])->where('active', true)->with('activeQuestions')->firstOrFail();
         $questionIds = $template->activeQuestions->pluck('id')->sort()->values();
         $submittedIds = collect(array_keys($data['scores']))->map(fn ($id) => (int) $id)->sort()->values();
         abort_unless($questionIds->all() === $submittedIds->all(), 422, 'Jawaban evaluasi tidak lengkap.');

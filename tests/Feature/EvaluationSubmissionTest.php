@@ -7,6 +7,7 @@ use App\Models\EvaluationPeriod;
 use App\Models\EvaluationTemplate;
 use App\Models\Question;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
 use Tests\TestCase;
@@ -23,6 +24,7 @@ class EvaluationSubmissionTest extends TestCase
         $evaluator->assignRole('employee');
         $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
         $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $target->update(['evaluation_template_id' => $template->id]);
         $first = Question::create(['evaluation_template_id' => $template->id, 'question_number' => 1, 'question_text' => 'Satu', 'active' => true]);
         $second = Question::create(['evaluation_template_id' => $template->id, 'question_number' => 2, 'question_text' => 'Dua', 'active' => true]);
 
@@ -59,7 +61,7 @@ class EvaluationSubmissionTest extends TestCase
 
         Evaluation::create($attributes);
 
-        $this->expectException(\Illuminate\Database\UniqueConstraintViolationException::class);
+        $this->expectException(UniqueConstraintViolationException::class);
         Evaluation::create($attributes);
     }
 
@@ -82,6 +84,7 @@ class EvaluationSubmissionTest extends TestCase
         $evaluator->assignRole('employee');
         $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
         $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $target->update(['evaluation_template_id' => $template->id]);
         $question = Question::create(['evaluation_template_id' => $template->id, 'question_number' => 1, 'question_text' => 'Satu', 'active' => true]);
         Evaluation::create([
             'evaluator_id' => $evaluator->id,

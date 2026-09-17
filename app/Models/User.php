@@ -14,7 +14,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['nik', 'name', 'avatar_url', 'role', 'position_id', 'department_id', 'requested_position_id', 'requested_department_id', 'active', 'is_approved', 'requested_role', 'email', 'password'])]
+#[Fillable(['nik', 'name', 'avatar_url', 'role', 'position_id', 'department_id', 'evaluation_template_id', 'requested_position_id', 'requested_department_id', 'active', 'is_approved', 'requested_role', 'email', 'password'])]
 #[Hidden(['password', 'remember_token', 'nik'])]
 class User extends Authenticatable
 {
@@ -44,6 +44,11 @@ class User extends Authenticatable
     public function receivedEvaluations(): HasMany
     {
         return $this->hasMany(Evaluation::class, 'target_id');
+    }
+
+    public function evaluationTemplate(): BelongsTo
+    {
+        return $this->belongsTo(EvaluationTemplate::class);
     }
 
     public function position(): BelongsTo
