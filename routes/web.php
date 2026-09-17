@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AtasanEvaluationReportController;
 use App\Http\Controllers\Admin\AttentionController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
@@ -56,6 +57,7 @@ Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->g
     Route::put('/users/{user}', [UserAdminController::class, 'update'])->name('users.update');
     Route::post('/users/{user}/toggle', [UserAdminController::class, 'toggleActive'])->name('users.toggle');
     Route::get('/reports/evaluations', [EvaluationReportController::class, 'index'])->name('reports.evaluations');
+    Route::get('/reports/evaluations/atasan', AtasanEvaluationReportController::class)->name('reports.evaluations.atasan');
     Route::get('/reports/evaluations/export', [EvaluationReportController::class, 'export'])->name('reports.evaluations.export');
     Route::get('/reports/evaluations/export/pdf', [EvaluationReportController::class, 'exportPdf'])->name('reports.evaluations.export.pdf');
     Route::get('/audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');

@@ -176,6 +176,17 @@ class AdminFeatureTest extends TestCase
         $response->assertOk()->assertDontSee('evaluator_id')->assertDontSee('NIK-EVALUATOR-SECRET');
     }
 
+    public function test_atasan_evaluation_report_can_filter_by_period_and_target(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
+        $target = User::factory()->create(['is_approved' => true]);
+
+        $this->actingAs($admin)->get(route('admin.reports.evaluations.atasan', ['period' => $period->id, 'target' => $target->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/Reports/Atasan')->where('selectedTarget.id', $target->id));
+    }
+
     public function test_pending_users_page_includes_nik(): void
     {
         $admin = $this->userWithRole('admin');
