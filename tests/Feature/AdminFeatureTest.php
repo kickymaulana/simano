@@ -191,6 +191,25 @@ class AdminFeatureTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Admin/Reports/Evaluators')->where('target.id', $target->id)->has('evaluators.data'));
     }
 
+    public function test_admin_or_hr_can_delete_one_atasan_evaluation(): void
+    {
+        $hr = $this->userWithRole('hr');
+        $evaluator = User::factory()->create();
+        $otherEvaluator = User::factory()->create();
+        $target = User::factory()->create();
+        $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $evaluation = Evaluation::create(['evaluator_id' => $evaluator->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 4]);
+        $other = Evaluation::create(['evaluator_id' => $otherEvaluator->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 5]);
+
+        $this->actingAs($hr)->delete(route('admin.reports.evaluations.atasan.evaluators.destroy', [$period, $target, $evaluation]))
+            ->assertRedirect(route('admin.reports.evaluations.atasan.evaluators', ['period' => $period->id, 'target' => $target->id]));
+
+        $this->assertDatabaseMissing('evaluations', ['id' => $evaluation->id]);
+        $this->assertDatabaseHas('evaluations', ['id' => $other->id]);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'evaluation.deleted']);
+    }
+
     public function test_atasan_evaluation_report_pdf_uses_target_nik_as_filename(): void
     {
         $admin = $this->userWithRole('admin');

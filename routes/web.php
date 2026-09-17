@@ -60,6 +60,7 @@ Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->g
     Route::get('/reports/evaluations', [EvaluationReportController::class, 'index'])->name('reports.evaluations');
     Route::get('/reports/evaluations/atasan', AtasanEvaluationReportController::class)->name('reports.evaluations.atasan');
     Route::get('/reports/evaluations/atasan/evaluators', [AtasanEvaluationReportController::class, 'evaluators'])->name('reports.evaluations.atasan.evaluators');
+    Route::delete('/reports/evaluations/atasan/{period}/{target}/evaluators/{evaluation}', [AtasanEvaluationReportController::class, 'destroy'])->name('reports.evaluations.atasan.evaluators.destroy');
     Route::get('/reports/evaluations/atasan/pdf', [AtasanEvaluationReportController::class, 'exportPdf'])->name('reports.evaluations.atasan.pdf');
     Route::get('/reports/evaluations/export', [EvaluationReportController::class, 'export'])->name('reports.evaluations.export');
     Route::get('/reports/evaluations/export/pdf', [EvaluationReportController::class, 'exportPdf'])->name('reports.evaluations.export.pdf');

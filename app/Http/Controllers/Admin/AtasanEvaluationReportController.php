@@ -7,15 +7,20 @@ use App\Models\Evaluation;
 use App\Models\EvaluationDetail;
 use App\Models\EvaluationPeriod;
 use App\Models\User;
+use App\Services\Audit\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class AtasanEvaluationReportController extends Controller
 {
+    public function __construct(private readonly AuditLogger $audit) {}
+
     public function __invoke(Request $request): Response
     {
         $validated = $request->validate([
@@ -33,6 +38,7 @@ class AtasanEvaluationReportController extends Controller
                 ->with(['evaluator.position:id,name', 'evaluator.departments:id,name'])
                 ->where('evaluation_period_id', $period->id)
                 ->where('target_id', $target->id)
+                ->where('target_category', 'atasan')
                 ->get()
                 ->unique('evaluator_id')
                 ->map(fn (Evaluation $evaluation): array => ['id' => $evaluation->evaluator->id, 'name' => $evaluation->evaluator->name, 'nik' => $evaluation->evaluator->nik, 'position' => $evaluation->evaluator->position?->name])
@@ -85,7 +91,7 @@ class AtasanEvaluationReportController extends Controller
             ->latest('submitted_at')
             ->paginate(20)
             ->through(fn (Evaluation $evaluation): array => [
-                'id' => $evaluation->evaluator->id,
+                'evaluation_id' => $evaluation->id,
                 'name' => $evaluation->evaluator->name,
                 'avatar_url' => $evaluation->evaluator->avatar_url,
                 'nik' => $evaluation->evaluator->nik,
@@ -100,6 +106,20 @@ class AtasanEvaluationReportController extends Controller
             'targetPosition' => $target->position?->only(['id', 'name']),
             'evaluators' => $evaluators,
         ]);
+    }
+
+    public function destroy(EvaluationPeriod $period, User $target, Evaluation $evaluation): RedirectResponse
+    {
+        abort_unless($evaluation->evaluation_period_id === $period->id && $evaluation->target_id === $target->id && $evaluation->target_category === 'atasan', 404);
+
+        DB::transaction(function () use ($evaluation): void {
+            $snapshot = $evaluation->only(['evaluator_id', 'target_id', 'evaluation_period_id', 'evaluation_template_id', 'target_category', 'average_score', 'submitted_at']);
+            $snapshot['detail_count'] = $evaluation->details()->count();
+            $evaluation->delete();
+            $this->audit->record('evaluation.deleted', null, $snapshot);
+        });
+
+        return to_route('admin.reports.evaluations.atasan.evaluators', ['period' => $period->id, 'target' => $target->id])->with('success', 'Evaluasi penilai dihapus.');
     }
 
     public function exportPdf(Request $request): HttpResponse
