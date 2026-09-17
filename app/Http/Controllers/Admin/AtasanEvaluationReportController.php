@@ -62,7 +62,7 @@ class AtasanEvaluationReportController extends Controller
             'periods' => EvaluationPeriod::query()->orderByDesc('year')->orderByDesc('month')->get(['id', 'month', 'year', 'status']),
             'targets' => User::query()->whereHas('receivedEvaluations')->with('position:id,name')->orderBy('name')->get(['id', 'name', 'position_id']),
             'selectedPeriod' => $period?->only(['id', 'month', 'year', 'status']),
-            'selectedTarget' => $target?->only(['id', 'name', 'nik', 'avatar_url']),
+            'selectedTarget' => $target ? array_merge($target->only(['id', 'name', 'nik', 'avatar_url']), ['departments' => $target->departments->pluck('name')->join(', ') ?: null]) : null,
             'targetPosition' => $target?->position?->only(['id', 'name']),
             'rows' => $rows,
             'evaluatorCount' => $evaluatorCount,
