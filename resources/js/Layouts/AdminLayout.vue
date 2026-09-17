@@ -29,6 +29,8 @@ const logout = () => form.post(route('logout'));
                         <Link :href="route('admin.departments.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Departemen</Link>
                         <Link :href="route('admin.evaluation-periods.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Periode evaluasi</Link>
                         <Link :href="route('admin.evaluation-templates.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100">Template evaluasi</Link>
+                        <p class="px-3 pt-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Pengaturan</p>
+                        <Link :href="route('admin.settings.evaluation-reset')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-red-50 font-semibold text-red-700': page.url.startsWith('/admin/settings/evaluation-reset') }">Reset penilaian</Link>
                         <div>
                             <button type="button" class="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-sm hover:bg-slate-100" @click="isReportsOpen = !isReportsOpen">
                                 Laporan & Analisis
@@ -82,7 +84,9 @@ const logout = () => form.post(route('logout'));
                              <Link :href="route('admin.question-analysis.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" @click="isMobileMenuOpen = false">Analisis pertanyaan</Link>
                              <Link :href="route('admin.organization-scorecard.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" @click="isMobileMenuOpen = false">Scorecard organisasi</Link>
                              <Link :href="route('admin.attention.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" @click="isMobileMenuOpen = false">Perlu perhatian</Link>
-                             <Link :href="route('admin.audit-logs.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" @click="isMobileMenuOpen = false">Audit log</Link>
+                              <Link :href="route('admin.audit-logs.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" @click="isMobileMenuOpen = false">Audit log</Link>
+                              <p class="px-3 pt-3 text-xs font-semibold uppercase tracking-widest text-slate-500">Pengaturan</p>
+                              <Link :href="route('admin.settings.evaluation-reset')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" @click="isMobileMenuOpen = false">Reset penilaian</Link>
                          </div>
                      </nav>
                  </div>

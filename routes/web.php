@@ -58,6 +58,8 @@ Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->g
     Route::put('/users/{user}', [UserAdminController::class, 'update'])->name('users.update');
     Route::post('/users/{user}/toggle', [UserAdminController::class, 'toggleActive'])->name('users.toggle');
     Route::get('/reports/evaluations', [EvaluationReportController::class, 'index'])->name('reports.evaluations');
+    Route::get('/settings/evaluation-reset', [EvaluationReportController::class, 'resetPage'])->name('settings.evaluation-reset');
+    Route::post('/settings/evaluation-reset', [EvaluationReportController::class, 'reset'])->name('settings.evaluation-reset.store');
     Route::get('/reports/evaluations/atasan', AtasanEvaluationReportController::class)->name('reports.evaluations.atasan');
     Route::get('/reports/evaluations/atasan/evaluators', [AtasanEvaluationReportController::class, 'evaluators'])->name('reports.evaluations.atasan.evaluators');
     Route::delete('/reports/evaluations/atasan/{period}/{target}/evaluators/{evaluation}', [AtasanEvaluationReportController::class, 'destroy'])->name('reports.evaluations.atasan.evaluators.destroy');

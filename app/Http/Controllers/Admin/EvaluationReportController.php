@@ -13,14 +13,56 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class EvaluationReportController extends Controller
 {
     public function __construct(private readonly AuditLogger $audit) {}
+
+    public function resetPage(): Response
+    {
+        return Inertia::render('Admin/Settings/EvaluationReset', [
+            'periods' => EvaluationPeriod::query()->orderByDesc('year')->orderByDesc('month')->get(['id', 'month', 'year', 'status']),
+            'targets' => User::query()->whereHas('receivedEvaluations')->orderBy('name')->get(['id', 'name', 'nik']),
+        ]);
+    }
+
+    public function reset(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'scope' => ['required', 'in:all,period,target'],
+            'period_id' => ['nullable', 'integer', 'exists:evaluation_periods,id'],
+            'target_id' => ['nullable', 'integer', 'exists:users,id'],
+        ]);
+
+        abort_if($data['scope'] === 'period' && empty($data['period_id']), 422, 'Periode wajib dipilih.');
+        abort_if($data['scope'] === 'target' && (empty($data['period_id']) || empty($data['target_id'])), 422, 'Periode dan target wajib dipilih.');
+
+        $query = Evaluation::query()
+            ->when($data['period_id'] ?? null, fn (Builder $query, int $id) => $query->where('evaluation_period_id', $id))
+            ->when($data['target_id'] ?? null, fn (Builder $query, int $id) => $query->where('target_id', $id));
+        $count = $query->count();
+
+        DB::transaction(function () use ($query, $data, $count): void {
+            $query->delete();
+            $this->audit->record('evaluations.reset', null, [
+                'scope' => $data['scope'],
+                'period_id' => $data['period_id'] ?? null,
+                'target_id' => $data['target_id'] ?? null,
+                'deleted_count' => $count,
+            ]);
+        });
+
+        Cache::flush();
+
+        return back()->with('success', "Reset selesai. {$count} evaluasi dan seluruh detailnya dihapus.");
+    }
 
     public function trend(EvaluationReportRequest $request): Response
     {
