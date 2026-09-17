@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { computed, ref } from 'vue';
 import { route } from 'ziggy-js';
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
 
@@ -10,6 +10,16 @@ const props = defineProps<{ periods: Period[]; targets: Target[] }>();
 const scope = ref<'all' | 'period' | 'target'>('period');
 const periodId = ref<number | ''>('');
 const targetId = ref<number | ''>('');
+const targetSearch = ref('');
+const matchingTargets = computed(() => {
+    const term = targetSearch.value.trim().toLowerCase();
+
+    return term ? props.targets.filter((target) => `${target.name} ${target.nik}`.toLowerCase().includes(term)) : [];
+});
+const selectTarget = (target: Target) => {
+    targetId.value = target.id;
+    targetSearch.value = `${target.name} — ${target.nik}`;
+};
 const reset = () => {
     if ((scope.value !== 'all' && !periodId.value) || (scope.value === 'target' && !targetId.value)) return;
     const label = scope.value === 'all' ? 'seluruh evaluasi' : scope.value === 'period' ? 'seluruh evaluasi pada periode terpilih' : 'seluruh evaluasi target pada periode terpilih';
@@ -39,12 +49,15 @@ const reset = () => {
                         <option v-for="period in periods" :key="period.id" :value="period.id">{{ period.month }}/{{ period.year }} · {{ period.status }}</option>
                     </select>
                 </label>
-                <label v-if="scope === 'target'" class="block text-sm font-semibold">Target
-                    <select v-model="targetId" class="mt-1 w-full rounded-lg border-slate-300">
-                        <option value="">Pilih target</option>
-                        <option v-for="target in targets" :key="target.id" :value="target.id">{{ target.name }} — {{ target.nik }}</option>
-                    </select>
-                </label>
+                <div v-if="scope === 'target'" class="relative">
+                    <label class="block text-sm font-semibold">Target
+                        <input v-model="targetSearch" type="search" placeholder="Ketik nama atau NIK..." class="mt-1 w-full rounded-lg border-slate-300" @input="targetId = ''" />
+                    </label>
+                    <div v-if="targetSearch && !targetId" class="absolute z-10 mt-1 max-h-52 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white shadow-lg">
+                        <button v-for="target in matchingTargets" :key="target.id" type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50" @click="selectTarget(target)">{{ target.name }} — {{ target.nik }}</button>
+                        <p v-if="!matchingTargets.length" class="px-3 py-2 text-sm text-slate-500">Target tidak ditemukan.</p>
+                    </div>
+                </div>
                 <button type="button" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400" :disabled="(scope !== 'all' && !periodId) || (scope === 'target' && !targetId)" @click="reset">Reset penilaian</button>
             </div>
         </div>
