@@ -34,7 +34,7 @@ class UserAdminController extends Controller
             'positions' => Position::query()->orderBy('name')->get(['id', 'name']),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
             'factories' => Factory::query()->orderBy('name')->get(['id', 'name']),
-            'evaluationTemplates' => EvaluationTemplate::query()->orderBy('target_category')->get(['id', 'target_category']),
+            'evaluationTemplates' => EvaluationTemplate::query()->orderBy('target_category')->get(['id', 'target_category', 'active']),
             'users' => User::query()
                 ->with(['position', 'departments', 'factories', 'evaluationTemplate'])
                 ->where('is_approved', true)
@@ -85,6 +85,36 @@ class UserAdminController extends Controller
         });
 
         return to_route('admin.users.index')->with('success', 'User diperbarui.');
+    }
+
+    public function bulkTemplate(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'template_id' => ['required', 'integer', 'exists:evaluation_templates,id'],
+            'q' => ['nullable', 'string', 'max:100'],
+            'role' => ['nullable', 'in:employee,hr,admin'],
+            'position_id' => ['nullable', 'integer', 'exists:positions,id'],
+            'department_id' => ['nullable', 'integer', 'exists:departments,id'],
+            'factory_id' => ['nullable', 'integer', 'exists:factories,id'],
+            'evaluation_template_id' => ['nullable', 'integer', 'exists:evaluation_templates,id'],
+            'active' => ['nullable', 'boolean'],
+        ]);
+
+        abort_if(collect($data)->except('template_id')->filter(fn ($value) => $value !== null && $value !== '')->isEmpty(), 422, 'Pilih minimal satu filter sebelum mengatur template massal.');
+        abort_unless(EvaluationTemplate::query()->whereKey($data['template_id'])->where('active', true)->exists(), 422, 'Template evaluasi harus aktif.');
+
+        $updated = User::query()
+            ->where('is_approved', true)
+            ->when($data['q'] ?? null, fn ($query, string $q) => $query->where(fn ($query) => $query->where('name', 'like', "%{$q}%")->orWhere('nik', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%")))
+            ->when($data['role'] ?? null, fn ($query, string $role) => $query->where('role', $role))
+            ->when($data['position_id'] ?? null, fn ($query, int $id) => $query->where('position_id', $id))
+            ->when($data['department_id'] ?? null, fn ($query, int $id) => $query->whereHas('departments', fn ($query) => $query->whereKey($id)))
+            ->when($data['factory_id'] ?? null, fn ($query, int $id) => $query->whereHas('factories', fn ($query) => $query->whereKey($id)))
+            ->when($data['evaluation_template_id'] ?? null, fn ($query, int $id) => $query->where('evaluation_template_id', $id))
+            ->when(array_key_exists('active', $data) && $data['active'] !== null, fn ($query) => $query->where('active', $data['active']))
+            ->update(['evaluation_template_id' => $data['template_id']]);
+
+        return back()->with('success', "Template evaluasi diterapkan ke {$updated} user.");
     }
 
     public function toggleActive(User $user): RedirectResponse

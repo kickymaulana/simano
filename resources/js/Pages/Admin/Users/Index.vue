@@ -22,11 +22,17 @@ type User = {
 };
 
 type Option = { id: number; name: string };
-type EvaluationTemplateOption = { id: number; target_category: string };
+type EvaluationTemplateOption = { id: number; target_category: string; active: boolean };
 const props = defineProps<{ users: Pagination<User>; filters: { q?: string; role?: string; position_id?: number; department_id?: number; factory_id?: number; evaluation_template_id?: number; active?: boolean }; positions: Option[]; departments: Option[]; factories: Option[]; evaluationTemplates: EvaluationTemplateOption[] }>();
 const filters = ref({ q: props.filters.q ?? '', role: props.filters.role ?? '', position_id: props.filters.position_id ?? '', department_id: props.filters.department_id ?? '', factory_id: props.filters.factory_id ?? '', evaluation_template_id: props.filters.evaluation_template_id ?? '', active: props.filters.active === undefined ? '' : String(Number(props.filters.active)) });
 const applyFilters = () => router.get(route('admin.users.index'), filters.value, { preserveState: true, replace: true });
 const resetFilters = () => { filters.value = { q: '', role: '', position_id: '', department_id: '', factory_id: '', evaluation_template_id: '', active: '' }; applyFilters(); };
+const bulkTemplateId = ref<number | ''>('');
+const hasFilters = () => Object.values(filters.value).some((value) => value !== '');
+const applyBulkTemplate = () => {
+    if (!bulkTemplateId.value || !hasFilters() || !confirm(`Terapkan template ke ${props.users.total} user hasil filter?`)) return;
+    router.post(route('admin.users.bulk-template'), { ...filters.value, template_id: bulkTemplateId.value }, { preserveScroll: true });
+};
 
 const selectedUser = ref<{ name: string; avatar_url: string } | null>(null);
 const closePreview = () => { selectedUser.value = null; };
@@ -55,6 +61,11 @@ const toggleActive = (user: User) => {
                 <label class="text-sm font-semibold">Pabrik<select v-model="filters.factory_id" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua</option><option v-for="item in factories" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
                 <label class="text-sm font-semibold">Template evaluasi<select v-model="filters.evaluation_template_id" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua</option><option v-for="item in evaluationTemplates" :key="item.id" :value="item.id">{{ item.target_category }}</option></select></label>
                 <div class="flex items-end gap-2"><button type="submit" class="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white">Terapkan</button><button type="button" class="rounded-lg border border-slate-300 px-4 py-2 font-semibold" @click="resetFilters">Reset</button></div>
+            </form>
+            <form class="flex flex-wrap items-end gap-3 rounded-xl bg-blue-50 p-5" @submit.prevent="applyBulkTemplate">
+                <label class="text-sm font-semibold">Set template ke {{ users.total }} hasil filter<select v-model="bulkTemplateId" :disabled="!hasFilters()" class="mt-1 w-full rounded-lg border-slate-300 disabled:bg-slate-100"><option value="">Pilih template aktif</option><option v-for="item in evaluationTemplates.filter((template) => template.active)" :key="item.id" :value="item.id">{{ item.target_category }}</option></select></label>
+                <button type="submit" :disabled="!hasFilters() || !bulkTemplateId" class="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white disabled:cursor-not-allowed disabled:bg-slate-400">Terapkan ke hasil filter</button>
+                <p v-if="!hasFilters()" class="text-sm text-slate-600">Atur minimal satu filter dulu.</p>
             </form>
             <div class="rounded-xl bg-white p-5 shadow-sm">
             <div v-if="!users.data.length" class="py-8 text-center text-slate-500">Belum ada user dibersetuju.</div>

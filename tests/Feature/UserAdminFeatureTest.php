@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\EvaluationTemplate;
 use App\Models\Factory;
 use App\Models\Position;
 use App\Models\User;
@@ -66,6 +67,24 @@ class UserAdminFeatureTest extends TestCase
         $this->assertTrue($user->departments()->whereKey($department->id)->exists());
         $this->assertTrue($user->departments()->whereKey($departmentTwo->id)->exists());
         $this->assertTrue($user->factories()->whereKey($factory->id)->exists());
+    }
+
+    public function test_admin_applies_active_template_to_filtered_users(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $position = Position::factory()->create();
+        $template = EvaluationTemplate::create(['target_category' => 'Atasan', 'active' => true]);
+        $matched = User::factory()->create(['is_approved' => true, 'position_id' => $position->id]);
+        $unmatched = User::factory()->create(['is_approved' => true]);
+
+        $response = $this->actingAs($admin)->post(route('admin.users.bulk-template'), [
+            'template_id' => $template->id,
+            'position_id' => $position->id,
+        ]);
+
+        $response->assertRedirect();
+        $this->assertEquals($template->id, $matched->refresh()->evaluation_template_id);
+        $this->assertNull($unmatched->refresh()->evaluation_template_id);
     }
 
     public function test_admin_toggles_user_active_state(): void
