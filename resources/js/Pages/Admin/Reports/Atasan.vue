@@ -38,8 +38,21 @@ const average = (score: number) => {
 
 <style>
 @media print {
+    @page { size: A4 portrait; margin: 10mm; }
+    aside, header, nav { display: none !important; }
+    main { padding: 0 !important; }
+    main > div { max-width: none !important; }
     .no-print { display: none !important; }
-    .report-content { box-shadow: none !important; border: 0 !important; }
-    body { background: white !important; }
+    html, body, body > div, body > div > div, main, main > div { background: white !important; }
+    .report-content { box-shadow: none !important; border: 0 !important; background: white !important; }
+    body, table, thead, tbody, tr, th, td { background: white !important; }
+    table { min-width: 0 !important; width: 100% !important; font-size: 8pt !important; }
+    th, td { padding: 4px !important; }
+    th:first-child, td:first-child { width: 5%; white-space: nowrap; }
+    th:nth-child(2), td:nth-child(2) { white-space: normal; overflow-wrap: break-word; }
+    th:nth-child(n + 3), td:nth-child(n + 3) { width: 7%; white-space: nowrap; }
+    thead { color: #1e293b !important; }
+    tbody tr:last-child { color: #1e293b !important; }
+    .report-content:last-child > div { background: white !important; color: #1e293b !important; }
 }
 </style>

@@ -187,6 +187,17 @@ class AdminFeatureTest extends TestCase
             ->assertInertia(fn ($page) => $page->component('Admin/Reports/Atasan')->where('selectedTarget.id', $target->id));
     }
 
+    public function test_atasan_evaluation_report_pdf_uses_target_nik_as_filename(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
+        $target = User::factory()->create(['nik' => 'NIK-ATASAN-001']);
+
+        $this->actingAs($admin)->get(route('admin.reports.evaluations.atasan.pdf', ['period' => $period->id, 'target' => $target->id]))
+            ->assertOk()
+            ->assertDownload('Laporan Evaluasi per Atasan - NIK-ATASAN-001.pdf');
+    }
+
     public function test_pending_users_page_includes_nik(): void
     {
         $admin = $this->userWithRole('admin');

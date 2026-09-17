@@ -7,8 +7,10 @@ use App\Models\Evaluation;
 use App\Models\EvaluationDetail;
 use App\Models\EvaluationPeriod;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response as HttpResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -61,5 +63,37 @@ class AtasanEvaluationReportController extends Controller
             'evaluatorCount' => $evaluatorCount,
             'filters' => ['period' => $validated['period'] ?? null, 'target' => $validated['target'] ?? null],
         ]);
+    }
+
+    public function exportPdf(Request $request): HttpResponse
+    {
+        $validated = $request->validate([
+            'period' => ['required', 'integer', 'exists:evaluation_periods,id'],
+            'target' => ['required', 'integer', 'exists:users,id'],
+        ]);
+        $period = EvaluationPeriod::findOrFail($validated['period']);
+        $target = User::query()->with('position:id,name')->findOrFail($validated['target']);
+        $rows = EvaluationDetail::query()
+            ->selectRaw('question_id, COUNT(*) as response_count, SUM(score = 1) as score_1, SUM(score = 2) as score_2, SUM(score = 3) as score_3, SUM(score = 4) as score_4, SUM(score = 5) as score_5')
+            ->with('question:id,question_number,question_text')
+            ->whereHas('evaluation', fn (Builder $query) => $query->where('evaluation_period_id', $period->id)->where('target_id', $target->id))
+            ->groupBy('question_id')
+            ->orderBy('question_id')
+            ->get()
+            ->map(function (EvaluationDetail $detail): array {
+                $count = (int) $detail->response_count;
+
+                return [
+                    'number' => $detail->question->question_number,
+                    'text' => $detail->question->question_text,
+                    'scores' => collect(range(5, 1))->mapWithKeys(fn (int $score) => [$score => $count ? round(((int) $detail->{'score_'.$score} / $count) * 100) : 0])->all(),
+                ];
+            });
+        $evaluatorCount = Evaluation::query()->where('evaluation_period_id', $period->id)->where('target_id', $target->id)->distinct('evaluator_id')->count('evaluator_id');
+        $filename = 'Laporan Evaluasi per Atasan - '.($target->nik ?: 'tanpa-nik').'.pdf';
+
+        return Pdf::loadView('exports.atasan-evaluation-report', compact('period', 'target', 'rows', 'evaluatorCount'))
+            ->setPaper('a4', 'portrait')
+            ->download($filename);
     }
 }
