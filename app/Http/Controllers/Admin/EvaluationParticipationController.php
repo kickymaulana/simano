@@ -27,14 +27,20 @@ class EvaluationParticipationController extends Controller
             ->with(['position:id,name', 'departments:id,name', 'factories:id,name'])
             ->where('active', true)
             ->where('is_approved', true)
+            ->whereHas('evaluationTemplate', fn (Builder $query) => $query->where('active', true))
             ->when($request->filled('position_id'), fn (Builder $query) => $query->where('position_id', $request->integer('position_id')))
             ->when($request->filled('factory_id'), fn (Builder $query) => $query->whereHas('factories', fn (Builder $factory) => $factory->whereKey($request->integer('factory_id'))))
             ->when($request->filled('department_id'), fn (Builder $query) => $query->whereHas('departments', fn (Builder $department) => $department->whereKey($request->integer('department_id'))))
-            ->withCount(['receivedEvaluations as evaluation_count' => fn (Builder $query) => $query->when($period, fn (Builder $query) => $query->where('evaluation_period_id', $period->id))])
+            ->withCount(['receivedEvaluations as evaluation_count' => fn (Builder $query) => $query
+                ->whereColumn('evaluation_template_id', 'users.evaluation_template_id')
+                ->when($period, fn (Builder $query) => $query->where('evaluation_period_id', $period->id))])
             ->withCount(['receivedEvaluations as evaluator_count' => fn (Builder $query) => $query
+                ->whereColumn('evaluation_template_id', 'users.evaluation_template_id')
                 ->when($period, fn (Builder $query) => $query->where('evaluation_period_id', $period->id))
                 ->selectRaw('COUNT(DISTINCT evaluator_id)')])
-            ->withMax(['receivedEvaluations as last_evaluated_at' => fn (Builder $query) => $query->when($period, fn (Builder $query) => $query->where('evaluation_period_id', $period->id))], 'submitted_at')
+            ->withMax(['receivedEvaluations as last_evaluated_at' => fn (Builder $query) => $query
+                ->whereColumn('evaluation_template_id', 'users.evaluation_template_id')
+                ->when($period, fn (Builder $query) => $query->where('evaluation_period_id', $period->id))], 'submitted_at')
             ->orderBy('name')
             ->paginate(10)
             ->withQueryString();
