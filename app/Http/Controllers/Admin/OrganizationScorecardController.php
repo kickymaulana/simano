@@ -39,6 +39,11 @@ class OrganizationScorecardController extends Controller
         return Evaluation::query()
             ->join('users', 'users.id', '=', 'evaluations.target_id')
             ->join('positions', 'positions.id', '=', 'users.position_id')
+            ->join('evaluation_templates', function ($join): void {
+                $join->on('evaluation_templates.id', '=', 'users.evaluation_template_id')
+                    ->where('evaluation_templates.active', true);
+            })
+            ->whereColumn('evaluations.evaluation_template_id', 'users.evaluation_template_id')
             ->when($period, fn ($query) => $query->where('evaluations.evaluation_period_id', $period->id))
             ->selectRaw('positions.id, positions.name, COUNT(DISTINCT evaluations.target_id) as employee_count, COUNT(evaluations.id) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score, MIN(evaluations.average_score) as minimum_score, MAX(evaluations.average_score) as maximum_score')
             ->groupBy('positions.id', 'positions.name')->orderByDesc('average_score')->paginate(10)->withQueryString();
@@ -49,6 +54,12 @@ class OrganizationScorecardController extends Controller
         return DB::table('evaluations')
             ->join($pivot, "$pivot.user_id", '=', 'evaluations.target_id')
             ->join($table, "$table.id", '=', "$pivot.$foreignKey")
+            ->join('users', 'users.id', '=', 'evaluations.target_id')
+            ->join('evaluation_templates', function ($join): void {
+                $join->on('evaluation_templates.id', '=', 'users.evaluation_template_id')
+                    ->where('evaluation_templates.active', true);
+            })
+            ->whereColumn('evaluations.evaluation_template_id', 'users.evaluation_template_id')
             ->when($period, fn ($query) => $query->where('evaluations.evaluation_period_id', $period->id))
             ->selectRaw("$table.id, $table.name, COUNT(DISTINCT evaluations.target_id) as employee_count, COUNT(evaluations.id) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score, MIN(evaluations.average_score) as minimum_score, MAX(evaluations.average_score) as maximum_score")
             ->groupBy("$table.id", "$table.name")->orderByDesc('average_score')->paginate(10)->withQueryString();
