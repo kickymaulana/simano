@@ -47,7 +47,7 @@ class AtasanEvaluationReportController extends Controller
             $rows = EvaluationDetail::query()
                 ->selectRaw('question_id, COUNT(*) as response_count, SUM(score) as total_score, SUM(score = 1) as score_1, SUM(score = 2) as score_2, SUM(score = 3) as score_3, SUM(score = 4) as score_4, SUM(score = 5) as score_5')
                 ->with('question:id,question_number,question_text')
-                ->whereHas('evaluation', fn (Builder $query) => $query->where('evaluation_period_id', $period->id)->where('target_id', $target->id))
+                ->whereHas('evaluation', fn (Builder $query) => $query->where('evaluation_period_id', $period->id)->where('target_id', $target->id)->where('target_category', 'atasan'))
                 ->groupBy('question_id')
                 ->orderBy('question_id')
                 ->get()
@@ -88,6 +88,7 @@ class AtasanEvaluationReportController extends Controller
             ->with(['evaluator.position:id,name', 'evaluator.departments:id,name'])
             ->where('evaluation_period_id', $period->id)
             ->where('target_id', $target->id)
+            ->where('target_category', 'atasan')
             ->latest('submitted_at')
             ->paginate(20)
             ->through(fn (Evaluation $evaluation): array => [
@@ -133,7 +134,7 @@ class AtasanEvaluationReportController extends Controller
         $rows = EvaluationDetail::query()
             ->selectRaw('question_id, COUNT(*) as response_count, SUM(score = 1) as score_1, SUM(score = 2) as score_2, SUM(score = 3) as score_3, SUM(score = 4) as score_4, SUM(score = 5) as score_5')
             ->with('question:id,question_number,question_text')
-            ->whereHas('evaluation', fn (Builder $query) => $query->where('evaluation_period_id', $period->id)->where('target_id', $target->id))
+            ->whereHas('evaluation', fn (Builder $query) => $query->where('evaluation_period_id', $period->id)->where('target_id', $target->id)->where('target_category', 'atasan'))
             ->groupBy('question_id')
             ->orderBy('question_id')
             ->get()
@@ -146,7 +147,7 @@ class AtasanEvaluationReportController extends Controller
                     'scores' => collect(range(5, 1))->mapWithKeys(fn (int $score) => [$score => $count ? round(((int) $detail->{'score_'.$score} / $count) * 100) : 0])->all(),
                 ];
             });
-        $evaluatorCount = Evaluation::query()->where('evaluation_period_id', $period->id)->where('target_id', $target->id)->distinct('evaluator_id')->count('evaluator_id');
+        $evaluatorCount = Evaluation::query()->where('evaluation_period_id', $period->id)->where('target_id', $target->id)->where('target_category', 'atasan')->distinct('evaluator_id')->count('evaluator_id');
         $filename = 'Laporan Evaluasi per Atasan - '.($target->nik ?: 'tanpa-nik').'.pdf';
 
         return Pdf::loadView('exports.atasan-evaluation-report', compact('period', 'target', 'rows', 'evaluatorCount'))
