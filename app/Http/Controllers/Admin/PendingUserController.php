@@ -20,7 +20,6 @@ class PendingUserController extends Controller
         return Inertia::render('Admin/PendingUsers/Index', [
             'users' => User::query()
                 ->with(['requestedPosition', 'requestedDepartments', 'requestedFactories'])
-                ->where('is_approved', false)
                 ->whereNotNull('requested_role')
                 ->latest('updated_at')
                 ->paginate(10, ['id', 'nik', 'name', 'email', 'avatar_url', 'requested_role', 'requested_position_id', 'created_at'])
@@ -30,7 +29,7 @@ class PendingUserController extends Controller
 
     public function edit(User $user): Response
     {
-        abort_unless(! $user->is_approved && $user->requested_role, 404);
+        abort_unless($user->requested_role, 404);
 
         return Inertia::render('Admin/PendingUsers/Form', [
             'user' => $user->load(['requestedPosition', 'requestedDepartments', 'requestedFactories']),
@@ -42,7 +41,7 @@ class PendingUserController extends Controller
 
     public function update(Request $request, User $user): RedirectResponse
     {
-        abort_unless(! $user->is_approved && $user->requested_role, 404);
+        abort_unless($user->requested_role, 404);
 
         $validated = $request->validate([
             'role' => ['required', 'in:employee,admin,hr'],
@@ -100,9 +99,13 @@ class PendingUserController extends Controller
     public function reject(User $user): RedirectResponse
     {
         $user->update([
-            'is_approved' => false,
+            'is_approved' => $user->is_approved,
             'requested_role' => null,
+            'requested_position_id' => null,
+            'requested_department_id' => null,
         ]);
+        $user->requestedDepartments()->detach();
+        $user->requestedFactories()->detach();
 
         return back()->with('success', 'Permintaan role ditolak.');
     }

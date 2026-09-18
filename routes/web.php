@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\QuestionAnalysisController;
 use App\Http\Controllers\Admin\UserAdminController;
 use App\Http\Controllers\Employee\EvaluationController;
 use App\Http\Controllers\Employee\EvaluationStatusController;
+use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Employee\TargetController;
 use App\Http\Controllers\Sso\PendingRoleController;
 use App\Http\Controllers\Sso\SsoController;
@@ -39,6 +40,8 @@ Route::middleware(['auth', 'role:employee|admin|hr'])->group(function () {
     Route::get('/targets/{target}/evaluation', [EvaluationController::class, 'create'])->name('evaluations.create');
     Route::post('/evaluations', [EvaluationController::class, 'store'])->name('evaluations.store');
     Route::get('/evaluations/status', [EvaluationStatusController::class, 'index'])->name('evaluations.status');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
 });
 
 Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->group(function () {
