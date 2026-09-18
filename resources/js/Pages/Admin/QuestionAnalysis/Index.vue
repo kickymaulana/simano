@@ -5,7 +5,7 @@ import { route } from 'ziggy-js';
 
 type Item = { id: number; name: string };
 type Period = { id: number; month: number; year: number; status: string };
-type Question = { question: { question_number: number; question_text: string }; response_count: number; average_score: number; score_1: number; score_2: number; score_3: number; score_4: number; score_5: number };
+type Question = { question: { id: number; question_number: number; question_text: string }; target_category: string; response_count: number; average_score: number; score_1: number; score_2: number; score_3: number; score_4: number; score_5: number };
 type Pagination = { data: Question[]; last_page: number; links: { url: string | null; label: string; active: boolean }[] };
 const props = defineProps<{ periods: Period[]; selectedPeriod: Period | null; positions: Item[]; factories: Item[]; departments: Item[]; filters: { position_id?: number; factory_id?: number; department_id?: number }; questions: Pagination }>();
 const filters = { period: props.selectedPeriod?.id, position_id: props.filters.position_id ?? '', factory_id: props.filters.factory_id ?? '', department_id: props.filters.department_id ?? '' };
