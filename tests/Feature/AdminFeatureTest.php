@@ -128,6 +128,8 @@ class AdminFeatureTest extends TestCase
         $otherTarget = User::factory()->create();
         $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
         $template = EvaluationTemplate::create(['target_category' => 'collection', 'active' => true]);
+        $matchingTarget->update(['evaluation_template_id' => $template->id]);
+        $otherTarget->update(['evaluation_template_id' => $template->id]);
 
         foreach ([$matchingTarget, $otherTarget] as $target) {
             Evaluation::create([

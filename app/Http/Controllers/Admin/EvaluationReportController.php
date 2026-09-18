@@ -72,7 +72,7 @@ class EvaluationReportController extends Controller
                 ->selectRaw('target_id, evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
                 ->with(['target:id,name,role', 'period:id,month,year']);
 
-            return $this->applyFilters($query, $request)
+            return $this->applyActiveTemplate($this->applyFilters($query, $request))
                 ->groupBy('target_id', 'evaluation_period_id')
                 ->get()
                 ->sortBy(fn (Evaluation $evaluation) => sprintf('%s-%02d', $evaluation->period->year, $evaluation->period->month))
@@ -138,7 +138,7 @@ class EvaluationReportController extends Controller
             ->selectRaw('target_id, evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
             ->with(['target.position', 'target.departments', 'target.factories']);
 
-        $rows = $this->applyFilters($query, $request)
+        $rows = $this->applyActiveTemplate($this->applyFilters($query, $request))
             ->when($period, fn ($query) => $query->where('evaluation_period_id', $period->id))
             ->groupBy('target_id', 'evaluation_period_id')
             ->orderByDesc('average_score')
@@ -171,11 +171,19 @@ class EvaluationReportController extends Controller
             ->selectRaw('target_id, evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
             ->with(['target.position', 'target.departments', 'target.factories', 'period:id,month,year']);
 
-        return $this->applyFilters($query, $request)
+        return $this->applyActiveTemplate($this->applyFilters($query, $request))
             ->when($period, fn ($query) => $query->where('evaluation_period_id', $period->id))
             ->groupBy('target_id', 'evaluation_period_id')
             ->orderByDesc('average_score')
             ->get();
+    }
+
+    private function applyActiveTemplate(Builder $query): Builder
+    {
+        return $query
+            ->whereColumn('evaluations.evaluation_template_id', 'users.evaluation_template_id')
+            ->join('users', 'users.id', '=', 'evaluations.target_id')
+            ->whereHas('target.evaluationTemplate', fn (Builder $template) => $template->where('active', true));
     }
 
     private function applyFilters(Builder $query, EvaluationReportRequest $request): Builder
