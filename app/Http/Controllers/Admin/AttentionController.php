@@ -21,14 +21,32 @@ class AttentionController extends Controller
         $threshold = (float) $request->input('threshold', 3);
         $previousPeriod = $period ? EvaluationPeriod::query()->where(fn (Builder $query) => $query->where('year', '<', $period->year)->orWhere(fn (Builder $query) => $query->where('year', $period->year)->where('month', '<', $period->month)))->latest('year')->latest('month')->first() : null;
 
-        $query = Evaluation::query()->selectRaw('target_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')->with(['target.position:id,name', 'target.departments:id,name', 'target.factories:id,name'])->when($period, fn (Builder $query) => $query->where('evaluation_period_id', $period->id));
+        $query = $this->activeTemplateEvaluations()
+            ->selectRaw('evaluations.target_id, COUNT(*) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score')
+            ->with(['target.position:id,name', 'target.departments:id,name', 'target.factories:id,name'])
+            ->when($period, fn (Builder $query) => $query->where('evaluations.evaluation_period_id', $period->id));
         $this->applyOrganizationFilters($query, $request);
-        $rows = $query->groupBy('target_id')->havingRaw('AVG(average_score) < ?', [$threshold])->orderBy('average_score')->paginate(10)->withQueryString();
+        $rows = $query->groupBy('evaluations.target_id')->havingRaw('AVG(evaluations.average_score) < ?', [$threshold])->orderBy('average_score')->paginate(10)->withQueryString();
 
-        $previousScores = $previousPeriod ? Evaluation::query()->where('evaluation_period_id', $previousPeriod->id)->selectRaw('target_id, ROUND(AVG(average_score), 2) as average_score')->groupBy('target_id')->pluck('average_score', 'target_id') : collect();
+        $previousScores = $previousPeriod ? $this->activeTemplateEvaluations()
+            ->where('evaluations.evaluation_period_id', $previousPeriod->id)
+            ->selectRaw('evaluations.target_id, ROUND(AVG(evaluations.average_score), 2) as average_score')
+            ->groupBy('evaluations.target_id')
+            ->pluck('average_score', 'target_id') : collect();
         $rows->through(fn (Evaluation $evaluation) => ['target' => [...$evaluation->target->only(['id', 'name', 'nik']), 'position' => $evaluation->target->position?->only(['id', 'name']), 'departments' => $evaluation->target->departments->map->only(['id', 'name'])->values(), 'factories' => $evaluation->target->factories->map->only(['id', 'name'])->values()], 'evaluation_count' => (int) $evaluation->evaluation_count, 'average_score' => (float) $evaluation->average_score, 'previous_average_score' => $previousScores->has($evaluation->target_id) ? (float) $previousScores[$evaluation->target_id] : null]);
 
         return Inertia::render('Admin/Attention/Index', ['periods' => EvaluationPeriod::query()->latest('year')->latest('month')->get(['id', 'month', 'year', 'status']), 'selectedPeriod' => $period?->only(['id', 'month', 'year', 'status']), 'positions' => Position::query()->orderBy('level')->orderBy('name')->get(['id', 'name']), 'factories' => Factory::query()->orderBy('name')->get(['id', 'name']), 'departments' => Department::query()->orderBy('name')->get(['id', 'name']), 'filters' => ['threshold' => $threshold, ...collect(['position_id', 'factory_id', 'department_id'])->mapWithKeys(fn (string $key) => [$key => $request->filled($key) ? $request->integer($key) : null])], 'rows' => $rows]);
+    }
+
+    private function activeTemplateEvaluations(): Builder
+    {
+        return Evaluation::query()
+            ->join('users', 'users.id', '=', 'evaluations.target_id')
+            ->join('evaluation_templates', function ($join): void {
+                $join->on('evaluation_templates.id', '=', 'users.evaluation_template_id')
+                    ->where('evaluation_templates.active', true);
+            })
+            ->whereColumn('evaluations.evaluation_template_id', 'users.evaluation_template_id');
     }
 
     private function applyOrganizationFilters(Builder $query, EvaluationReportRequest $request): void
