@@ -89,6 +89,7 @@ class AtasanEvaluationReportController extends Controller
             ->where('target_id', $target->id)
             ->latest('submitted_at')
             ->paginate(20)
+            ->withQueryString()
             ->through(fn (Evaluation $evaluation): array => [
                 'evaluation_id' => $evaluation->id,
                 'name' => $evaluation->evaluator->name,
