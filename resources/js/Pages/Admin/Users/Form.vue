@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Head, Link, useForm } from '@inertiajs/vue3';
 import AdminLayout from '../../../Layouts/AdminLayout.vue';
+import { ref } from 'vue';
 import { route } from 'ziggy-js';
 
 type User = {
     id: number;
     name: string;
+    nik: string;
     role: string;
     position_id?: number | null;
     department_id?: number | null;
@@ -17,6 +19,15 @@ type Option = { id: number; name: string };
 type EvaluationTemplateOption = { id: number; target_category: string; active: boolean };
 
 const props = defineProps<{ user: User; positions: Option[]; departments: Option[]; factories: Option[]; evaluationTemplates: EvaluationTemplateOption[] }>();
+
+const deleteForm = useForm({});
+const showDeleteModal = ref(false);
+const copied = ref(false);
+const copyNik = async () => {
+    await navigator.clipboard.writeText(props.user.nik);
+    copied.value = true;
+};
+const deleteUser = () => deleteForm.delete(route('admin.users.destroy', props.user.id));
 
 const form = useForm({
     name: props.user.name,
@@ -81,5 +92,19 @@ const toggleDepartment = (id: number) => {
                 <Link :href="route('admin.users.index')" class="rounded-lg border border-slate-300 px-4 py-2">Batal</Link>
             </div>
         </form>
+        <section class="mt-5 max-w-xl rounded-xl border border-red-200 bg-red-50 p-5">
+            <h2 class="font-bold text-red-900">Hapus user</h2>
+            <p class="mt-1 text-sm text-red-800">Seluruh relasi organisasi, role, dan riwayat evaluasi user akan dihapus permanen.</p>
+            <button type="button" :disabled="deleteForm.processing" class="mt-4 rounded-lg bg-red-700 px-4 py-2 font-semibold text-white disabled:opacity-50" @click="showDeleteModal = true">Hapus User</button>
+        </section>
+        <div v-if="showDeleteModal" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/75 p-4" role="dialog" aria-modal="true" aria-labelledby="delete-user-title">
+            <div class="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+                <h2 id="delete-user-title" class="text-lg font-bold text-red-900">Konfirmasi hapus user</h2>
+                <p class="mt-3 text-sm text-slate-700">User <strong>{{ user.name }}</strong> dengan NIK:</p>
+                <div class="mt-2 flex items-center gap-2 rounded-lg bg-slate-100 p-3"><code class="flex-1 font-semibold">{{ user.nik }}</code><button type="button" class="rounded-lg border border-slate-300 bg-white px-3 py-1 text-sm" @click="copyNik">{{ copied ? 'Tersalin' : 'Salin NIK' }}</button></div>
+                <p class="mt-4 text-sm text-red-800">Hapus user ini dari SIMANO, lalu hapus juga akun dengan NIK tersebut di SSO agar user dapat registrasi ulang. Seluruh relasi dan riwayat evaluasi akan dihapus permanen.</p>
+                <div class="mt-6 flex justify-end gap-3"><button type="button" class="rounded-lg border border-slate-300 px-4 py-2" @click="showDeleteModal = false">Batal</button><button type="button" :disabled="deleteForm.processing" class="rounded-lg bg-red-700 px-4 py-2 font-semibold text-white disabled:opacity-50" @click="deleteUser">Hapus Permanen</button></div>
+            </div>
+        </div>
     </AdminLayout>
 </template>

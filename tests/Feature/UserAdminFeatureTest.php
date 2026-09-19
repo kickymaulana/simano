@@ -87,6 +87,32 @@ class UserAdminFeatureTest extends TestCase
         $this->assertNull($unmatched->refresh()->evaluation_template_id);
     }
 
+    public function test_admin_deletes_user_and_organization_relations(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $user = $this->userWithRole('employee');
+        $department = Department::factory()->create();
+        $factory = Factory::factory()->create();
+        $user->departments()->attach($department);
+        $user->factories()->attach($factory);
+
+        $this->actingAs($admin)->delete(route('admin.users.destroy', $user))->assertRedirect(route('admin.users.index'));
+
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+        $this->assertDatabaseMissing('department_user', ['user_id' => $user->id]);
+        $this->assertDatabaseMissing('factory_user', ['user_id' => $user->id]);
+        $this->assertDatabaseMissing('model_has_roles', ['model_id' => $user->id, 'model_type' => User::class]);
+    }
+
+    public function test_admin_cannot_delete_own_account(): void
+    {
+        $admin = $this->userWithRole('admin');
+
+        $this->actingAs($admin)->delete(route('admin.users.destroy', $admin))->assertUnprocessable();
+
+        $this->assertDatabaseHas('users', ['id' => $admin->id]);
+    }
+
     public function test_admin_toggles_user_active_state(): void
     {
         $admin = $this->userWithRole('admin');

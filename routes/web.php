@@ -59,6 +59,7 @@ Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->g
     Route::post('/users/bulk-template', [UserAdminController::class, 'bulkTemplate'])->name('users.bulk-template');
     Route::get('/users/{user}/edit', [UserAdminController::class, 'edit'])->name('users.edit');
     Route::put('/users/{user}', [UserAdminController::class, 'update'])->name('users.update');
+    Route::delete('/users/{user}', [UserAdminController::class, 'destroy'])->name('users.destroy');
     Route::post('/users/{user}/toggle', [UserAdminController::class, 'toggleActive'])->name('users.toggle');
     Route::get('/reports/evaluations', [EvaluationReportController::class, 'index'])->name('reports.evaluations');
     Route::get('/settings/evaluation-reset', [EvaluationReportController::class, 'resetPage'])->name('settings.evaluation-reset');

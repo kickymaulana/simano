@@ -57,7 +57,7 @@ class UserAdminController extends Controller
     public function edit(User $user): Response
     {
         return Inertia::render('Admin/Users/Form', [
-            'user' => $user->load(['position', 'departments', 'factories']),
+            'user' => $user->load(['position', 'departments', 'factories'])->makeVisible(['nik']),
             'positions' => Position::query()->orderBy('name')->get(['id', 'name']),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
             'factories' => Factory::query()->orderBy('name')->get(['id', 'name']),
@@ -117,6 +117,25 @@ class UserAdminController extends Controller
             ->update(['evaluation_template_id' => $data['template_id']]);
 
         return back()->with('success', "Template evaluasi diterapkan ke {$updated} user.");
+    }
+
+    public function destroy(Request $request, User $user): RedirectResponse
+    {
+        abort_if($request->user()->is($user), 422, 'Admin tidak dapat menghapus akun sendiri.');
+
+        DB::transaction(function () use ($user): void {
+            $user->submittedEvaluations()->delete();
+            $user->receivedEvaluations()->delete();
+            $user->departments()->detach();
+            $user->requestedDepartments()->detach();
+            $user->factories()->detach();
+            $user->requestedFactories()->detach();
+            $user->roles()->detach();
+            $user->permissions()->detach();
+            $user->delete();
+        });
+
+        return to_route('admin.users.index')->with('success', 'User dan seluruh relasinya berhasil dihapus.');
     }
 
     public function toggleActive(User $user): RedirectResponse
