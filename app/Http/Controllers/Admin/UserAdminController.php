@@ -21,6 +21,7 @@ class UserAdminController extends Controller
     {
         $filters = $request->validate([
             'q' => ['nullable', 'string', 'max:100'],
+            'nik_ktp' => ['nullable', 'boolean'],
             'role' => ['nullable', 'in:employee,hr,admin'],
             'position_id' => ['nullable', 'integer', 'exists:positions,id'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
@@ -39,6 +40,7 @@ class UserAdminController extends Controller
                 ->with(['position', 'departments', 'factories', 'evaluationTemplate'])
                 ->where('is_approved', true)
                 ->when($filters['q'] ?? null, fn ($query, string $q) => $query->where(fn ($query) => $query->where('name', 'like', "%{$q}%")->orWhere('nik', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%")))
+                ->when($filters['nik_ktp'] ?? false, fn ($query) => $query->whereRaw("nik REGEXP '^[0-9]{16}$'"))
                 ->when($filters['role'] ?? null, fn ($query, string $role) => $query->where('role', $role))
                 ->when($filters['position_id'] ?? null, fn ($query, int $id) => $query->where('position_id', $id))
                 ->when($filters['department_id'] ?? null, fn ($query, int $id) => $query->whereHas('departments', fn ($query) => $query->whereKey($id)))

@@ -23,10 +23,10 @@ type User = {
 
 type Option = { id: number; name: string };
 type EvaluationTemplateOption = { id: number; target_category: string; active: boolean };
-const props = defineProps<{ users: Pagination<User>; filters: { q?: string; role?: string; position_id?: number; department_id?: number; factory_id?: number; evaluation_template_id?: number; active?: boolean }; positions: Option[]; departments: Option[]; factories: Option[]; evaluationTemplates: EvaluationTemplateOption[] }>();
-const filters = ref({ q: props.filters.q ?? '', role: props.filters.role ?? '', position_id: props.filters.position_id ?? '', department_id: props.filters.department_id ?? '', factory_id: props.filters.factory_id ?? '', evaluation_template_id: props.filters.evaluation_template_id ?? '', active: props.filters.active === undefined ? '' : String(Number(props.filters.active)) });
+const props = defineProps<{ users: Pagination<User>; filters: { q?: string; nik_ktp?: boolean; role?: string; position_id?: number; department_id?: number; factory_id?: number; evaluation_template_id?: number; active?: boolean }; positions: Option[]; departments: Option[]; factories: Option[]; evaluationTemplates: EvaluationTemplateOption[] }>();
+const filters = ref({ q: props.filters.q ?? '', nik_ktp: props.filters.nik_ktp ? '1' : '', role: props.filters.role ?? '', position_id: props.filters.position_id ?? '', department_id: props.filters.department_id ?? '', factory_id: props.filters.factory_id ?? '', evaluation_template_id: props.filters.evaluation_template_id ?? '', active: props.filters.active === undefined ? '' : String(Number(props.filters.active)) });
 const applyFilters = () => router.get(route('admin.users.index'), filters.value, { preserveState: true, replace: true });
-const resetFilters = () => { filters.value = { q: '', role: '', position_id: '', department_id: '', factory_id: '', evaluation_template_id: '', active: '' }; applyFilters(); };
+const resetFilters = () => { filters.value = { q: '', nik_ktp: '', role: '', position_id: '', department_id: '', factory_id: '', evaluation_template_id: '', active: '' }; applyFilters(); };
 const bulkTemplateId = ref<number | ''>('');
 const hasFilters = () => Object.values(filters.value).some((value) => value !== '');
 const applyBulkTemplate = () => {
@@ -54,6 +54,7 @@ const toggleActive = (user: User) => {
         <div class="space-y-4">
             <form class="grid gap-3 rounded-xl bg-white p-5 shadow-sm sm:grid-cols-2 lg:grid-cols-4" @submit.prevent="applyFilters">
                 <label class="text-sm font-semibold sm:col-span-2">Cari nama, NIK, email<input v-model="filters.q" type="search" class="mt-1 w-full rounded-lg border-slate-300" /></label>
+                <label class="flex items-center gap-2 text-sm font-semibold"><input v-model="filters.nik_ktp" type="checkbox" true-value="1" false-value="" />Kemungkinan NIK KTP (16 digit)</label>
                 <label class="text-sm font-semibold">Role<select v-model="filters.role" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua</option><option value="employee">Employee</option><option value="hr">HR</option><option value="admin">Admin</option></select></label>
                 <label class="text-sm font-semibold">Status<select v-model="filters.active" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua</option><option value="1">Aktif</option><option value="0">Nonaktif</option></select></label>
                 <label class="text-sm font-semibold">Jabatan<select v-model="filters.position_id" class="mt-1 w-full rounded-lg border-slate-300"><option value="">Semua</option><option v-for="item in positions" :key="item.id" :value="item.id">{{ item.name }}</option></select></label>
