@@ -32,7 +32,7 @@ class PendingUserController extends Controller
         abort_unless($user->requested_role, 404);
 
         return Inertia::render('Admin/PendingUsers/Form', [
-            'user' => $user->load(['requestedPosition', 'requestedDepartments', 'requestedFactories']),
+            'user' => $user->load(['requestedPosition', 'requestedDepartments', 'requestedFactories'])->makeVisible(['nik']),
             'positions' => Position::query()->orderBy('level')->orderBy('name')->get(['id', 'name']),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
             'factories' => Factory::query()->orderBy('name')->get(['id', 'name']),

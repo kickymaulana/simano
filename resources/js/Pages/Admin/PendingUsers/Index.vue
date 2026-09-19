@@ -63,8 +63,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', handleEscape));
                             <td class="p-3">{{ user.requested_factories?.map((f) => f.name).join(', ') || '-' }}</td>
                             <td class="flex gap-2 p-3">
                                 <Link :href="route('admin.pending-users.edit', user.id)" class="rounded-lg border border-blue-600 px-3 py-2 font-semibold text-blue-700">Edit</Link>
-                                 <button class="rounded-lg bg-emerald-600 px-3 py-2 font-semibold text-white" @click="submit(route('admin.pending-users.approve', user.id))">Approve</button>
-                                <button class="rounded-lg bg-red-600 px-3 py-2 font-semibold text-white" @click="submit(route('admin.pending-users.reject', user.id))">Reject</button>
+                                <button class="rounded-lg bg-emerald-600 px-3 py-2 font-semibold text-white" @click="submit(route('admin.pending-users.approve', user.id))">Approve</button>
                             </td>
                         </tr>
                     </tbody>

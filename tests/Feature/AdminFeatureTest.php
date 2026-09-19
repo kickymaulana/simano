@@ -253,10 +253,16 @@ class AdminFeatureTest extends TestCase
             'requested_position_id' => $position->id,
         ]);
 
+        $pending = User::query()->where('nik', 'NIK-PENDING-001')->firstOrFail();
+
         $this->actingAs($admin)->get(route('admin.pending-users.index'))
             ->assertOk()
             ->assertSee('NIK-PENDING-001')
             ->assertSee('MANAGER');
+
+        $this->actingAs($admin)->get(route('admin.pending-users.edit', $pending))
+            ->assertOk()
+            ->assertSee('NIK-PENDING-001');
     }
 
     public function test_approving_pending_user_syncs_spatie_role_and_clears_request(): void
