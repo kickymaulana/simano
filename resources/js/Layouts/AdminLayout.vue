@@ -36,7 +36,7 @@ const logout = () => form.post(route('logout'));
                                 Laporan & Analisis
                                 <span :class="isReportsOpen ? 'rotate-180' : ''" class="transition-transform">⌄</span>
                             </button>
-                            <div v-if="isReportsOpen" class="ml-3 space-y-1 border-l border-slate-200 pl-2">
+                            <div v-if="isReportsOpen" class="ml-3 max-h-72 space-y-1 overflow-y-auto border-l border-slate-200 pl-2 pr-1">
                                 <Link :href="route('admin.reports.evaluations')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url === '/admin/reports/evaluations' }">Rekap evaluasi</Link>
                                 <Link :href="route('admin.reports.evaluations.atasan')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/reports/evaluations/atasan') }">Laporan per karyawan</Link>
                                 <Link :href="route('admin.evaluation-participation.index')" class="block rounded-lg px-3 py-2 text-sm hover:bg-slate-100" :class="{ 'bg-blue-50 font-semibold text-blue-700': page.url.startsWith('/admin/evaluation-participation') }">Partisipasi evaluasi</Link>
