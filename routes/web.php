@@ -56,6 +56,7 @@ Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->g
     Route::post('/pending-users/{user}/approve', [PendingUserController::class, 'approve'])->name('pending-users.approve');
     Route::post('/pending-users/{user}/reject', [PendingUserController::class, 'reject'])->name('pending-users.reject');
     Route::get('/users', [UserAdminController::class, 'index'])->name('users.index');
+    Route::get('/user-summary', [UserAdminController::class, 'summary'])->name('user-summary.index');
     Route::post('/users/bulk-template', [UserAdminController::class, 'bulkTemplate'])->name('users.bulk-template');
     Route::get('/users/{user}/edit', [UserAdminController::class, 'edit'])->name('users.edit');
     Route::put('/users/{user}', [UserAdminController::class, 'update'])->name('users.update');

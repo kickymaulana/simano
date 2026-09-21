@@ -38,6 +38,27 @@ class UserAdminFeatureTest extends TestCase
         $response->assertOk()->assertSee($approved->name)->assertDontSee($pending->name);
     }
 
+    public function test_user_summary_groups_departments_and_positions_by_factory(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $factoryOne = Factory::factory()->create(['name' => 'DALU 1']);
+        $factoryTwo = Factory::factory()->create(['name' => 'DALU 2']);
+        $department = Department::factory()->create(['name' => 'FILLING']);
+        $position = Position::factory()->create(['name' => 'OPERATOR']);
+        $userOne = User::factory()->create(['is_approved' => true, 'active' => true, 'position_id' => $position->id]);
+        $userTwo = User::factory()->create(['is_approved' => true, 'active' => true, 'position_id' => $position->id]);
+        $userOne->factories()->attach($factoryOne);
+        $userOne->departments()->attach($department);
+        $userTwo->factories()->attach($factoryTwo);
+
+        $this->actingAs($admin)->get(route('admin.user-summary.index'))
+            ->assertOk()
+            ->assertSee('DALU 1')
+            ->assertSee('DALU 2')
+            ->assertSee('FILLING')
+            ->assertSee('OPERATOR');
+    }
+
     public function test_admin_updates_user_profile_and_relations(): void
     {
         $admin = $this->userWithRole('admin');

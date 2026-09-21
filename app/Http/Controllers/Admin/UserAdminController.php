@@ -54,6 +54,20 @@ class UserAdminController extends Controller
         ]);
     }
 
+    public function summary(): Response
+    {
+        $baseUsers = DB::table('users')->where('users.is_approved', true)->where('users.active', true);
+        $factories = Factory::query()->select(['id', 'name'])->orderBy('name')->get()->map(fn (Factory $factory): array => [
+            'id' => $factory->id,
+            'name' => $factory->name,
+            'user_count' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->where('factory_user.factory_id', $factory->id)->count('users.id'),
+            'departments' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->join('department_user', 'users.id', '=', 'department_user.user_id')->join('departments', 'department_user.department_id', '=', 'departments.id')->where('factory_user.factory_id', $factory->id)->select(['departments.id', 'departments.name'])->selectRaw('count(distinct users.id) as user_count')->groupBy('departments.id', 'departments.name')->orderBy('departments.name')->get(),
+            'positions' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->join('positions', 'users.position_id', '=', 'positions.id')->where('factory_user.factory_id', $factory->id)->select(['positions.id', 'positions.name'])->selectRaw('count(distinct users.id) as user_count')->groupBy('positions.id', 'positions.name')->orderBy('positions.name')->get(),
+        ]);
+
+        return Inertia::render('Admin/Users/Summary', ['factories' => $factories]);
+    }
+
     public function edit(User $user): Response
     {
         return Inertia::render('Admin/Users/Form', [
