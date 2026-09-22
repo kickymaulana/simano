@@ -4,10 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Department;
 use App\Models\Evaluation;
+use App\Models\EvaluationDetail;
 use App\Models\EvaluationPeriod;
 use App\Models\EvaluationTemplate;
 use App\Models\Factory;
 use App\Models\Position;
+use App\Models\Question;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Spatie\Permission\Models\Role;
@@ -27,6 +29,31 @@ class AdminFeatureTest extends TestCase
         $employee = $this->userWithRole('employee');
 
         $this->actingAs($employee)->get(route('admin.dashboard'))->assertForbidden();
+    }
+
+    public function test_attention_uses_score_four_and_five_percentage_target(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $period = EvaluationPeriod::create(['month' => 9, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'Atasan', 'active' => true]);
+        $question = Question::create(['evaluation_template_id' => $template->id, 'question_number' => 1, 'question_text' => 'Pertanyaan', 'active' => true]);
+        $targetBelow = User::factory()->create(['active' => true, 'is_approved' => true, 'evaluation_template_id' => $template->id]);
+        $targetAtTarget = User::factory()->create(['active' => true, 'is_approved' => true, 'evaluation_template_id' => $template->id]);
+        $evaluator = User::factory()->create();
+        $belowEvaluation = Evaluation::create(['evaluator_id' => $evaluator->id, 'target_id' => $targetBelow->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'Atasan', 'average_score' => 4]);
+        $atTargetEvaluation = Evaluation::create(['evaluator_id' => $evaluator->id, 'target_id' => $targetAtTarget->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'Atasan', 'average_score' => 4]);
+
+        foreach ([5, 5, 5, 3, 3] as $index => $score) {
+            $detailQuestion = $index === 0 ? $question : Question::create(['evaluation_template_id' => $template->id, 'question_number' => $index + 1, 'question_text' => "Pertanyaan {$index}", 'active' => true]);
+            EvaluationDetail::create(['evaluation_id' => $belowEvaluation->id, 'question_id' => $detailQuestion->id, 'score' => $score]);
+        }
+        foreach ([5, 5, 5, 5, 3] as $index => $score) {
+            $detailQuestion = $index === 0 ? $question : Question::where('evaluation_template_id', $template->id)->where('question_number', $index + 1)->firstOrFail();
+            EvaluationDetail::create(['evaluation_id' => $atTargetEvaluation->id, 'question_id' => $detailQuestion->id, 'score' => $score]);
+        }
+
+        $this->actingAs($admin)->get(route('admin.attention.index'))
+            ->assertInertia(fn ($page) => $page->where('filters.threshold', 80)->where('rows.total', 1)->where('rows.data.0.target.id', $targetBelow->id)->where('rows.data.0.score_4_5_percentage', 60));
     }
 
     public function test_admin_can_create_period_and_only_one_period_is_active(): void

@@ -17,23 +17,28 @@ class AttentionController extends Controller
 {
     public function __invoke(EvaluationReportRequest $request): Response
     {
-        $period = EvaluationPeriod::query()->when($request->filled('period'), fn (Builder $query) => $query->whereKey($request->integer('period')))->latest('year')->latest('month')->first();
-        $threshold = (float) $request->input('threshold', 3);
+        $period = EvaluationPeriod::query()
+            ->when($request->filled('period'), fn (Builder $query) => $query->whereKey($request->integer('period')), fn (Builder $query) => $query->active())
+            ->latest('year')
+            ->latest('month')
+            ->first();
+        $threshold = (float) $request->input('threshold', 80);
         $previousPeriod = $period ? EvaluationPeriod::query()->where(fn (Builder $query) => $query->where('year', '<', $period->year)->orWhere(fn (Builder $query) => $query->where('year', $period->year)->where('month', '<', $period->month)))->latest('year')->latest('month')->first() : null;
 
         $query = $this->activeTemplateEvaluations()
-            ->selectRaw('evaluations.target_id, COUNT(*) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score')
+            ->join('evaluation_details', 'evaluation_details.evaluation_id', '=', 'evaluations.id')
+            ->selectRaw('evaluations.target_id, COUNT(DISTINCT evaluations.id) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score, ROUND(SUM(evaluation_details.score IN (4, 5)) * 100.0 / COUNT(*), 1) as score_4_5_percentage')
             ->with(['target.position:id,name', 'target.departments:id,name', 'target.factories:id,name'])
-            ->when($period, fn (Builder $query) => $query->where('evaluations.evaluation_period_id', $period->id));
+            ->when($period, fn (Builder $query) => $query->where('evaluations.evaluation_period_id', $period->id), fn (Builder $query) => $query->whereRaw('1 = 0'));
         $this->applyOrganizationFilters($query, $request);
-        $rows = $query->groupBy('evaluations.target_id')->havingRaw('AVG(evaluations.average_score) < ?', [$threshold])->orderBy('average_score')->paginate(10)->withQueryString();
+        $rows = $query->groupBy('evaluations.target_id')->havingRaw('SUM(evaluation_details.score IN (4, 5)) * 100 < ? * COUNT(*)', [$threshold])->orderBy('score_4_5_percentage')->paginate(10)->withQueryString();
 
         $previousScores = $previousPeriod ? $this->activeTemplateEvaluations()
             ->where('evaluations.evaluation_period_id', $previousPeriod->id)
             ->selectRaw('evaluations.target_id, ROUND(AVG(evaluations.average_score), 2) as average_score')
             ->groupBy('evaluations.target_id')
             ->pluck('average_score', 'target_id') : collect();
-        $rows->through(fn (Evaluation $evaluation) => ['target' => [...$evaluation->target->only(['id', 'name', 'nik']), 'position' => $evaluation->target->position?->only(['id', 'name']), 'departments' => $evaluation->target->departments->map->only(['id', 'name'])->values(), 'factories' => $evaluation->target->factories->map->only(['id', 'name'])->values()], 'evaluation_count' => (int) $evaluation->evaluation_count, 'average_score' => (float) $evaluation->average_score, 'previous_average_score' => $previousScores->has($evaluation->target_id) ? (float) $previousScores[$evaluation->target_id] : null]);
+        $rows->through(fn (Evaluation $evaluation) => ['target' => [...$evaluation->target->only(['id', 'name', 'nik']), 'position' => $evaluation->target->position?->only(['id', 'name']), 'departments' => $evaluation->target->departments->map->only(['id', 'name'])->values(), 'factories' => $evaluation->target->factories->map->only(['id', 'name'])->values()], 'evaluation_count' => (int) $evaluation->evaluation_count, 'average_score' => (float) $evaluation->average_score, 'score_4_5_percentage' => (float) $evaluation->score_4_5_percentage, 'previous_average_score' => $previousScores->has($evaluation->target_id) ? (float) $previousScores[$evaluation->target_id] : null]);
 
         return Inertia::render('Admin/Attention/Index', ['periods' => EvaluationPeriod::query()->latest('year')->latest('month')->get(['id', 'month', 'year', 'status']), 'selectedPeriod' => $period?->only(['id', 'month', 'year', 'status']), 'positions' => Position::query()->orderBy('level')->orderBy('name')->get(['id', 'name']), 'factories' => Factory::query()->orderBy('name')->get(['id', 'name']), 'departments' => Department::query()->orderBy('name')->get(['id', 'name']), 'filters' => ['threshold' => $threshold, ...collect(['position_id', 'factory_id', 'department_id'])->mapWithKeys(fn (string $key) => [$key => $request->filled($key) ? $request->integer($key) : null])], 'rows' => $rows]);
     }

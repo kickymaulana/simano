@@ -29,7 +29,7 @@ class EvaluationReportRequest extends FormRequest
             'factory_id' => ['nullable', 'integer', 'exists:factories,id'],
             'department_id' => ['nullable', 'integer', 'exists:departments,id'],
             'group_by' => ['nullable', 'string', 'in:department,factory,position'],
-            'threshold' => ['nullable', 'numeric', 'min:1', 'max:5'],
+            'threshold' => ['nullable', 'numeric', 'min:0', 'max:100'],
             'per_page' => ['nullable', 'integer', 'in:10,25,50'],
         ];
     }

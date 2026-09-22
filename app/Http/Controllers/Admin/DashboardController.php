@@ -35,7 +35,7 @@ class DashboardController extends Controller
                 ->join('evaluation_details', 'evaluation_details.evaluation_id', '=', 'evaluations.id')
                 ->select('evaluations.target_id')
                 ->groupBy('evaluations.target_id')
-                ->havingRaw('SUM(evaluation_details.score IN (4, 5)) / COUNT(*) < 0.8'),
+                ->havingRaw('SUM(evaluation_details.score IN (4, 5)) * 1.0 / COUNT(*) < 0.8'),
             'target_attention'
         )->count();
         $questionAttentionCount = DB::query()->fromSub(
@@ -43,7 +43,7 @@ class DashboardController extends Controller
                 ->join('evaluation_details', 'evaluation_details.evaluation_id', '=', 'evaluations.id')
                 ->select('evaluation_details.question_id')
                 ->groupBy('evaluation_details.question_id')
-                ->havingRaw('SUM(evaluation_details.score IN (4, 5)) / COUNT(*) < 0.8'),
+                ->havingRaw('SUM(evaluation_details.score IN (4, 5)) * 1.0 / COUNT(*) < 0.8'),
             'question_attention'
         )->count();
 
