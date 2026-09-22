@@ -38,9 +38,14 @@ class UserAdminFeatureTest extends TestCase
         $response->assertOk()->assertSee($approved->name)->assertDontSee($pending->name);
     }
 
-    public function test_user_summary_groups_departments_and_positions_by_factory(): void
+    public function test_guest_is_redirected_from_user_summary(): void
     {
-        $admin = $this->userWithRole('admin');
+        $this->get(route('user-summary.index'))->assertRedirect(route('sso.login'));
+    }
+
+    public function test_user_summary_is_available_to_employees_and_groups_departments_and_positions_by_factory(): void
+    {
+        $employee = $this->userWithRole('employee');
         $factoryOne = Factory::factory()->create(['name' => 'DALU 1']);
         $factoryTwo = Factory::factory()->create(['name' => 'DALU 2']);
         $department = Department::factory()->create(['name' => 'FILLING']);
@@ -51,7 +56,7 @@ class UserAdminFeatureTest extends TestCase
         $userOne->departments()->attach($department);
         $userTwo->factories()->attach($factoryTwo);
 
-        $this->actingAs($admin)->get(route('admin.user-summary.index'))
+        $this->actingAs($employee)->get(route('user-summary.index'))
             ->assertOk()
             ->assertSee('DALU 1')
             ->assertSee('DALU 2')

@@ -19,6 +19,7 @@ const logout = () => form.post(route('logout'));
                 <Link :href="route('home')" class="text-lg font-bold text-blue-700">SIMANO</Link>
                 <div class="flex items-center gap-2">
                     <span v-if="page.props.auth.user" class="max-w-24 truncate text-sm font-medium text-slate-700">{{ page.props.auth.user.name }}</span>
+                    <Link v-if="page.props.auth.user" :href="route('user-summary.index')" class="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:inline-flex">Organisasi</Link>
                     <Link v-if="page.props.auth.user" :href="route('profile.edit')" class="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:inline-flex">Profil</Link>
                     <Link v-if="canAccessAdmin" :href="route('admin.dashboard')" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100">Panel Admin</Link>
                     <form v-if="page.props.auth.user" @submit.prevent="logout">
@@ -43,6 +44,10 @@ const logout = () => form.post(route('logout'));
                     Beranda
                 </Link>
                 <slot name="navigation" />
+                <Link v-if="page.props.auth.user" :href="route('user-summary.index')" class="flex min-h-11 min-w-16 flex-col items-center justify-center text-xs text-slate-600">
+                    <span class="text-lg">▦</span>
+                    Organisasi
+                </Link>
                 <Link v-if="page.props.auth.user" :href="route('profile.edit')" class="flex min-h-11 min-w-16 flex-col items-center justify-center text-xs text-slate-600">
                     <span class="text-lg">●</span>
                     Profil
