@@ -61,8 +61,14 @@ class UserAdminController extends Controller
             'id' => $factory->id,
             'name' => $factory->name,
             'user_count' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->where('factory_user.factory_id', $factory->id)->count('users.id'),
-            'departments' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->join('department_user', 'users.id', '=', 'department_user.user_id')->join('departments', 'department_user.department_id', '=', 'departments.id')->where('factory_user.factory_id', $factory->id)->select(['departments.id', 'departments.name'])->selectRaw('count(distinct users.id) as user_count')->groupBy('departments.id', 'departments.name')->orderBy('departments.name')->get(),
-            'positions' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->join('positions', 'users.position_id', '=', 'positions.id')->where('factory_user.factory_id', $factory->id)->select(['positions.id', 'positions.name'])->selectRaw('count(distinct users.id) as user_count')->groupBy('positions.id', 'positions.name')->orderBy('positions.name')->get(),
+            'departments' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->join('department_user', 'users.id', '=', 'department_user.user_id')->join('departments', 'department_user.department_id', '=', 'departments.id')->where('factory_user.factory_id', $factory->id)->select(['departments.id', 'departments.name'])->selectRaw('count(distinct users.id) as user_count')->groupBy('departments.id', 'departments.name')->orderBy('departments.name')->get()->map(function (object $department) use ($baseUsers, $factory): array {
+                return [
+                    'id' => $department->id,
+                    'name' => $department->name,
+                    'user_count' => $department->user_count,
+                    'positions' => (clone $baseUsers)->join('factory_user', 'users.id', '=', 'factory_user.user_id')->join('department_user', 'users.id', '=', 'department_user.user_id')->join('positions', 'users.position_id', '=', 'positions.id')->where('factory_user.factory_id', $factory->id)->where('department_user.department_id', $department->id)->select(['positions.id', 'positions.name'])->selectRaw('count(distinct users.id) as user_count')->groupBy('positions.id', 'positions.name')->orderBy('positions.name')->get(),
+                ];
+            }),
         ]);
 
         return Inertia::render('Admin/Users/Summary', ['factories' => $factories]);
