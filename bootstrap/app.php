@@ -32,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
             ForceHttps::class,
             HandleInertiaRequests::class,
         ]);
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
