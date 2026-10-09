@@ -5,7 +5,7 @@ import { route } from 'ziggy-js';
 
 defineProps<{ title?: string }>();
 
-const page = usePage<{ auth: { user: { name: string } | null; roles: string[] } }>();
+const page = usePage<{ auth: { user: { name: string } | null; roles: string[] }; serverId: string }>();
 const canAccessAdmin = computed(() => (page.props.auth.roles ?? []).some((r) => r === 'admin' || r === 'hr'));
 
 const form = useForm({});
@@ -16,7 +16,10 @@ const logout = () => form.post(route('logout'));
     <div class="min-h-screen bg-slate-50 text-slate-900">
         <header class="sticky top-0 z-10 border-b border-slate-200 bg-white/95 px-4 py-3 backdrop-blur sm:px-6">
             <div class="mx-auto flex max-w-2xl items-center justify-between">
-                <Link :href="route('home')" class="text-lg font-bold text-blue-700">SIMANO</Link>
+                <div class="flex items-center gap-2">
+                    <Link :href="route('home')" class="text-lg font-bold text-blue-700">SIMANO</Link>
+                    <span class="rounded-full bg-slate-100 px-2 py-1 text-xs font-medium text-slate-600">{{ page.props.serverId }}</span>
+                </div>
                 <div class="flex items-center gap-2">
                     <span v-if="page.props.auth.user" class="max-w-24 truncate text-sm font-medium text-slate-700">{{ page.props.auth.user.name }}</span>
                     <Link v-if="page.props.auth.user" :href="route('user-summary.index')" class="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-100 sm:inline-flex">Organisasi</Link>

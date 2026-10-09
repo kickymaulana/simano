@@ -5,7 +5,7 @@ import { route } from 'ziggy-js';
 
  defineProps<{ title?: string }>();
 
-const page = usePage();
+const page = usePage<{ serverId: string }>();
 const reportPaths = ['/admin/reports/evaluations', '/admin/evaluation-participation', '/admin/question-analysis', '/admin/organization-scorecard', '/admin/attention', '/admin/audit-logs'];
 const isReportPage = computed(() => reportPaths.some((path) => page.url.startsWith(path)));
 const isReportsOpen = ref(isReportPage.value);
@@ -58,7 +58,10 @@ const logout = () => form.post(route('logout'));
 <div class="flex items-center justify-between lg:max-w-none">
                          <button type="button" class="rounded-lg border border-slate-300 px-3 py-1.5 text-lg leading-none lg:hidden" aria-label="Buka menu" @click="isMobileMenuOpen = !isMobileMenuOpen">☰</button>
                          <div>
-                            <p class="text-xs font-semibold uppercase tracking-widest text-blue-600">Admin/HR</p>
+                            <div class="flex items-center gap-2">
+                                <p class="text-xs font-semibold uppercase tracking-widest text-blue-600">Admin/HR</p>
+                                <span class="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{{ page.props.serverId }}</span>
+                            </div>
                             <h1 class="text-lg font-bold sm:text-xl">{{ title ?? 'Dashboard' }}</h1>
                         </div>
                         <slot name="header-actions" />
