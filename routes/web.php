@@ -15,6 +15,7 @@ use App\Http\Controllers\Admin\PendingUserController;
 use App\Http\Controllers\Admin\PositionController;
 use App\Http\Controllers\Admin\QuestionAnalysisController;
 use App\Http\Controllers\Admin\UserAdminController;
+use App\Http\Controllers\Employee\CommentController;
 use App\Http\Controllers\Employee\EvaluationController;
 use App\Http\Controllers\Employee\EvaluationStatusController;
 use App\Http\Controllers\Employee\ProfileController;
@@ -38,6 +39,9 @@ Route::middleware(['auth', 'role:employee|admin|hr'])->group(function () {
     Route::get('/dashboard', fn () => Inertia::render('Dashboard'))->name('dashboard');
     Route::get('/targets', [TargetController::class, 'index'])->name('targets.index');
     Route::get('/targets/{target}/evaluation', [EvaluationController::class, 'create'])->name('evaluations.create');
+    Route::get('/targets/{target}/comments', [CommentController::class, 'index'])->name('comments.index');
+    Route::post('/targets/{target}/comments', [CommentController::class, 'store'])->name('comments.store');
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
     Route::post('/evaluations', [EvaluationController::class, 'store'])->name('evaluations.store');
     Route::get('/evaluations/status', [EvaluationStatusController::class, 'index'])->name('evaluations.status');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

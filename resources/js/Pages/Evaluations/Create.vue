@@ -27,7 +27,12 @@ const submit = () => form.post(route('evaluations.store'));
 <template>
     <Head title="Evaluasi" />
     <EmployeeLayout title="Evaluasi kinerja">
-        <template #subtitle><p class="mt-2 text-slate-600">{{ target.name }} · {{ template.target_category }} · {{ period.month }}/{{ period.year }}</p></template>
+        <template #subtitle>
+            <div class="mt-2 flex flex-wrap items-center gap-3 text-slate-600">
+                <span>{{ target.name }} · {{ template.target_category }} · {{ period.month }}/{{ period.year }}</span>
+                <Link :href="route('comments.index', target.id)" class="font-semibold text-blue-700 hover:underline">Lihat komentar</Link>
+            </div>
+        </template>
         <form class="space-y-5" @submit.prevent="submit">
             <p v-if="template.description" class="rounded-xl bg-blue-50 p-4 text-sm text-blue-900">{{ template.description }}</p>
             <div class="space-y-3">
