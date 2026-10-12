@@ -54,6 +54,7 @@ const submit = () => form.post(route('comments.store', props.target.id), { onSuc
             </nav>
 
             <form v-if="!userComment" class="space-y-3 rounded-xl border border-slate-200 bg-white p-4" @submit.prevent="submit">
+                <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Gunakan bahasa yang sopan dan membangun. Komentar kasar, menghina, SARA, atau tidak pantas dapat dilacak, dihapus, dan dikenakan sanksi sesuai ketentuan perusahaan.</p>
                 <label for="comment" class="block text-sm font-semibold">Tulis komentar</label>
                 <textarea id="comment" v-model="form.body" rows="4" maxlength="1000" class="w-full rounded-lg border-slate-300" placeholder="Tulis komentar secara sopan..." required />
                 <p class="text-xs text-slate-500">Komentar akan tampil tanpa nama pengirim.</p>

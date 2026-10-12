@@ -13,6 +13,7 @@ type Target = {
     position?: { name: string } | null;
     department?: { name: string } | null;
     factories?: Array<{ name: string }>;
+    evaluated: boolean;
 };
 type SelectItem = { id: number; name: string };
 type Filters = { q?: string; position_id?: string; department_id?: string; factory_id?: string };
@@ -104,17 +105,21 @@ const pageUrl = (page: number) => {
 
             <LottieState v-if="!targets.length" title="Target tidak ditemukan" message="Coba ubah kata kunci atau filter." />
             <div v-else class="space-y-2">
-                <Link v-for="target in targets" :key="target.id" :href="route('evaluations.create', target.id)" class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-                    <button v-if="target.avatar_url" type="button" class="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" :aria-label="`Lihat foto ${target.name}`" @click.prevent.stop="selectedTarget = target">
+                <div v-for="target in targets" :key="target.id" class="flex items-center gap-3 rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+                    <button v-if="target.avatar_url" type="button" class="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2" :aria-label="`Lihat foto ${target.name}`" @click="selectedTarget = target">
                         <img :src="target.avatar_url" :alt="target.name" class="h-11 w-11 rounded-full object-cover" />
                     </button>
                     <span v-else class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-100 font-semibold text-blue-700">{{ target.name.slice(0, 1) }}</span>
-                    <span class="min-w-0">
+                    <span class="min-w-0 flex-1">
                         <strong class="block">{{ target.name }}</strong>
                         <small class="block text-slate-500">{{ target.position?.name ?? 'Tanpa jabatan' }}</small>
                         <small class="text-slate-500">{{ target.factories?.map((f) => f.name).join(', ') || 'Tanpa pabrik' }}</small>
                     </span>
-                </Link>
+                    <span class="flex shrink-0 flex-col items-end gap-1 text-sm">
+                        <Link v-if="!target.evaluated" :href="route('evaluations.create', target.id)" class="font-semibold text-blue-700 hover:underline">Nilai</Link>
+                        <Link :href="route('comments.index', target.id)" class="font-semibold text-slate-700 hover:underline">Komentar</Link>
+                    </span>
+                </div>
             </div>
 
             <nav v-if="pagination.last_page > 1" class="flex items-center justify-center gap-2">

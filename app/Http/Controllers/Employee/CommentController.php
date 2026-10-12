@@ -20,9 +20,10 @@ class CommentController extends Controller
         abort_if(! $target->active, 404);
 
         $period = EvaluationPeriod::active()->first();
+        $template = $target->evaluationTemplate()->where('active', true)->first();
 
-        if (! $period) {
-            return to_route('targets.index')->withErrors(['evaluation' => 'Periode evaluasi belum aktif.']);
+        if (! $period || ! $template) {
+            return to_route('targets.index')->withErrors(['evaluation' => 'Periode atau template evaluasi belum aktif.']);
         }
 
         $comments = Comment::query()
@@ -57,6 +58,8 @@ class CommentController extends Controller
         abort_if(! $target->active, 404);
 
         $period = EvaluationPeriod::active()->firstOrFail();
+        $template = $target->evaluationTemplate()->where('active', true)->first();
+        abort_unless($template, 404);
 
         try {
             Comment::create([

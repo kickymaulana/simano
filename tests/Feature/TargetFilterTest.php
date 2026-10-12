@@ -3,6 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Department;
+use App\Models\Evaluation;
+use App\Models\EvaluationPeriod;
+use App\Models\EvaluationTemplate;
 use App\Models\Factory;
 use App\Models\Position;
 use App\Models\User;
@@ -72,5 +75,26 @@ class TargetFilterTest extends TestCase
         $response = $this->actingAs($evaluator)->get(route('targets.index', ['q' => 'JOHNDOE01']));
 
         $response->assertOk()->assertInertia(fn ($page) => $page->has('targets', 1));
+    }
+
+    public function test_evaluated_target_still_has_comment_link_status(): void
+    {
+        $evaluator = $this->evaluator();
+        $target = User::factory()->create(['active' => true]);
+        $period = EvaluationPeriod::create(['month' => 10, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+
+        Evaluation::create([
+            'evaluator_id' => $evaluator->id,
+            'target_id' => $target->id,
+            'evaluation_template_id' => $template->id,
+            'evaluation_period_id' => $period->id,
+            'target_category' => 'atasan',
+            'average_score' => 4,
+        ]);
+
+        $this->actingAs($evaluator)
+            ->get(route('targets.index'))
+            ->assertInertia(fn ($page) => $page->where('targets.0.evaluated', true));
     }
 }

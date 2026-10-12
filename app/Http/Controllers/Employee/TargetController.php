@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Employee;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\TargetSearchRequest;
 use App\Models\Department;
+use App\Models\EvaluationPeriod;
 use App\Models\Factory;
 use App\Models\Position;
 use App\Models\User;
@@ -16,6 +17,11 @@ class TargetController extends Controller
 {
     public function index(TargetSearchRequest $request): Response
     {
+        $periodId = EvaluationPeriod::active()->value('id');
+        $evaluatedTargetIds = $periodId
+            ? $request->user()->submittedEvaluations()->where('evaluation_period_id', $periodId)->pluck('target_id')->all()
+            : [];
+
         $query = User::query()
             ->with(['position', 'departments', 'factories'])
             ->where('active', true)
@@ -39,7 +45,9 @@ class TargetController extends Controller
             'positions' => Position::query()->orderBy('level')->orderBy('name')->get(['id', 'name']),
             'factories' => Factory::query()->orderBy('name')->get(['id', 'name']),
             'departments' => Department::query()->orderBy('name')->get(['id', 'name']),
-            'targets' => $query->items(),
+            'targets' => collect($query->items())->map(function (User $target) use ($evaluatedTargetIds): array {
+                return array_merge($target->toArray(), ['evaluated' => in_array($target->id, $evaluatedTargetIds, true)]);
+            })->values(),
             'pagination' => [
                 'current_page' => $query->currentPage(),
                 'last_page' => $query->lastPage(),
