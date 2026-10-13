@@ -20,15 +20,17 @@ class CommentController extends Controller
         abort_if(! $target->active, 404);
 
         $period = EvaluationPeriod::active()->first();
+        $isSelf = $target->id === $request->user()->id;
         $template = $target->evaluationTemplate()->where('active', true)->first();
 
-        if (! $period || ! $template) {
+        if (! $period || (! $isSelf && ! $template)) {
             return to_route('targets.index')->withErrors(['evaluation' => 'Periode atau template evaluasi belum aktif.']);
         }
 
         $comments = Comment::query()
             ->where('target_id', $target->id)
             ->where('evaluation_period_id', $period->id)
+            ->when(! $isSelf, fn ($query) => $query->where('user_id', $request->user()->id))
             ->latest()
             ->paginate(10)
             ->withQueryString()
@@ -36,7 +38,7 @@ class CommentController extends Controller
                 'id' => $comment->id,
                 'body' => $comment->body,
                 'created_at' => $comment->created_at?->format('d/m/Y H:i'),
-                'can_delete' => $comment->user_id === $request->user()->id || $request->user()->hasAnyRole(['admin', 'hr']),
+                'can_delete' => $comment->user_id === $request->user()->id,
             ]);
 
         $userComment = Comment::query()

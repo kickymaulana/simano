@@ -20,7 +20,7 @@ const submit = () => form.post(route('comments.store', props.target.id), { onSuc
 
 <template>
     <Head :title="`Komentar untuk ${target.name}`" />
-    <EmployeeLayout title="Komentar">
+    <EmployeeLayout :title="isSelf ? 'Kotak Masuk Komentar' : 'Komentar Saya'">
         <div class="space-y-4">
             <section class="sticky top-[57px] z-10 -mx-4 border-b border-slate-200 bg-slate-50/95 px-4 py-3 backdrop-blur sm:top-[61px] sm:-mx-6 sm:px-6">
                 <div class="flex items-center gap-3">
