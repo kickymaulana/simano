@@ -50,12 +50,14 @@ class CommentController extends Controller
             'period' => $period->only(['id', 'month', 'year']),
             'comments' => $comments,
             'userComment' => $userComment,
+            'isSelf' => $target->id === $request->user()->id,
         ]);
     }
 
     public function store(StoreCommentRequest $request, User $target): RedirectResponse
     {
         abort_if(! $target->active, 404);
+        abort_if($target->id === $request->user()->id, 422, 'Tidak dapat mengomentari diri sendiri.');
 
         $period = EvaluationPeriod::active()->firstOrFail();
         $template = $target->evaluationTemplate()->where('active', true)->first();

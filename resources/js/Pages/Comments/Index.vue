@@ -13,7 +13,7 @@ type Comments = {
 };
 
 const page = usePage<{ errors: { body?: string }; flash?: { success?: string } }>();
-const props = defineProps<{ target: Target; period: Period; comments: Comments; userComment: boolean }>();
+const props = defineProps<{ target: Target; period: Period; comments: Comments; userComment: boolean; isSelf: boolean }>();
 const form = useForm({ body: '' });
 const submit = () => form.post(route('comments.store', props.target.id), { onSuccess: () => form.reset() });
 </script>
@@ -53,16 +53,17 @@ const submit = () => form.post(route('comments.store', props.target.id), { onSuc
                 <Link v-if="comments.next_page_url" :href="comments.next_page_url" preserve-scroll class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700">Selanjutnya</Link>
             </nav>
 
-            <form v-if="!userComment" class="space-y-3 rounded-xl border border-slate-200 bg-white p-4" @submit.prevent="submit">
+            <form v-if="!isSelf && !userComment" class="space-y-3 rounded-xl border border-slate-200 bg-white p-4" @submit.prevent="submit">
                 <p class="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Gunakan bahasa yang sopan dan membangun. Komentar kasar, menghina, SARA, atau tidak pantas dapat dilacak, dihapus, dan dikenakan sanksi sesuai ketentuan perusahaan.</p>
                 <label for="comment" class="block text-sm font-semibold">Tulis komentar</label>
                 <textarea id="comment" v-model="form.body" rows="4" maxlength="1000" class="w-full rounded-lg border-slate-300" placeholder="Tulis komentar secara sopan..." required />
                 <p class="text-xs text-slate-500">Komentar akan tampil tanpa nama pengirim.</p>
                 <button type="submit" :disabled="form.processing" class="rounded-lg bg-blue-700 px-4 py-2 font-semibold text-white disabled:opacity-50">{{ form.processing ? 'Mengirim...' : 'Kirim komentar' }}</button>
             </form>
+            <p v-else-if="isSelf" class="rounded-xl bg-slate-100 p-4 text-sm text-slate-600">Ini adalah komentar tentang Anda. Identitas pemberi komentar tetap anonim.</p>
             <p v-else class="rounded-xl bg-slate-100 p-4 text-sm text-slate-600">Anda sudah mengirim komentar. Hapus komentar Anda untuk membuat komentar baru.</p>
 
-            <Link :href="route('evaluations.create', target.id)" class="inline-block text-sm font-semibold text-blue-700 hover:underline">Kembali ke evaluasi</Link>
+            <Link :href="isSelf ? route('profile.edit') : route('evaluations.create', target.id)" class="inline-block text-sm font-semibold text-blue-700 hover:underline">{{ isSelf ? 'Kembali ke profil' : 'Kembali ke evaluasi' }}</Link>
         </div>
     </EmployeeLayout>
 </template>

@@ -20,7 +20,7 @@ class ProfileController extends Controller
         $user = $request->user()->load(['position', 'departments', 'factories', 'requestedPosition', 'requestedDepartments', 'requestedFactories']);
 
         return Inertia::render('Profile/Edit', [
-            'user' => $user->only(['name', 'nik', 'email', 'avatar_url', 'role']),
+            'user' => $user->only(['id', 'name', 'nik', 'email', 'avatar_url', 'role']),
             'current' => [
                 'position' => $user->position?->only(['id', 'name']),
                 'departments' => $user->departments->map->only(['id', 'name'])->values(),

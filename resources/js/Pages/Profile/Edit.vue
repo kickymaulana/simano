@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, Link, useForm } from '@inertiajs/vue3';
 
 import EmployeeLayout from '../../Layouts/EmployeeLayout.vue';
 import { route } from 'ziggy-js';
 
 type Option = { id: number; name: string };
-type ProfileUser = { name: string; nik: string; email: string; avatar_url: string | null; role: string };
+type ProfileUser = { id: number; name: string; nik: string; email: string; avatar_url: string | null; role: string };
 
 const props = defineProps<{
     user: ProfileUser;
@@ -36,6 +36,7 @@ const toggle = (items: number[], id: number) => {
                     <span v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-bold text-blue-700">{{ user.name.slice(0, 1) }}</span>
                     <div><h2 class="font-bold">{{ user.name }}</h2><p class="text-sm text-slate-500">{{ user.nik }} · {{ user.email }} · {{ user.role }}</p><p class="mt-1 text-xs text-slate-500">Nama, foto, dan role dikelola melalui SSO.</p></div>
                 </div>
+                <Link :href="route('comments.index', user.id)" class="mt-4 inline-flex rounded-lg border border-blue-700 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">Lihat Komentar Saya</Link>
             </section>
 
             <section class="rounded-xl border border-slate-200 bg-white p-5">
