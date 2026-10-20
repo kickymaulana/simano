@@ -69,7 +69,7 @@ class EvaluationReportController extends Controller
         $filterKeys = ['target', 'position_id', 'factory_id', 'department_id'];
         $trend = Cache::remember('evaluation-report:trend:'.md5(json_encode($request->only($filterKeys))), now()->addSeconds(60), function () use ($request) {
             $query = Evaluation::query()
-                ->selectRaw('target_id, evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
+            ->selectRaw('evaluations.target_id, evaluations.evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score')
                 ->with(['target:id,name,role', 'period:id,month,year']);
 
             return $this->applyActiveTemplate($this->applyFilters($query, $request))
@@ -135,7 +135,13 @@ class EvaluationReportController extends Controller
     {
         $period = $this->period($request);
         $query = Evaluation::query()
-            ->selectRaw('target_id, evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
+            ->selectRaw('target_id, evaluation_period_id, COUNT(DISTINCT evaluations.id) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
+            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 5) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_5')
+            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 4) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_4')
+            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 3) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_3')
+            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 2) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_2')
+            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 1) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_1')
+            ->leftJoin('evaluation_details', 'evaluation_details.evaluation_id', '=', 'evaluations.id')
             ->with(['target.position', 'target.departments', 'target.factories']);
 
         $rows = $this->applyActiveTemplate($this->applyFilters($query, $request))
@@ -154,6 +160,13 @@ class EvaluationReportController extends Controller
             ],
             'evaluation_count' => (int) $evaluation->evaluation_count,
             'average_score' => (float) $evaluation->average_score,
+            'score_percentages' => [
+                5 => (int) $evaluation->score_percentage_5,
+                4 => (int) $evaluation->score_percentage_4,
+                3 => (int) $evaluation->score_percentage_3,
+                2 => (int) $evaluation->score_percentage_2,
+                1 => (int) $evaluation->score_percentage_1,
+            ],
         ]);
 
         return Inertia::render('Admin/Reports/Index', [
