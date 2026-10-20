@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class EvaluationReportController extends Controller
 {
@@ -69,7 +70,7 @@ class EvaluationReportController extends Controller
         $filterKeys = ['target', 'position_id', 'factory_id', 'department_id'];
         $trend = Cache::remember('evaluation-report:trend:'.md5(json_encode($request->only($filterKeys))), now()->addSeconds(60), function () use ($request) {
             $query = Evaluation::query()
-            ->selectRaw('evaluations.target_id, evaluations.evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score')
+                ->selectRaw('target_id, evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
                 ->with(['target:id,name,role', 'period:id,month,year']);
 
             return $this->applyActiveTemplate($this->applyFilters($query, $request))
@@ -103,7 +104,7 @@ class EvaluationReportController extends Controller
             ->download('simano-rekap-evaluasi.pdf');
     }
 
-    public function export(EvaluationReportRequest $request): HttpResponse
+    public function export(EvaluationReportRequest $request): StreamedResponse
     {
         $period = $this->period($request);
         $rows = $this->aggregate($request, $period);
@@ -112,9 +113,11 @@ class EvaluationReportController extends Controller
 
         return response()->streamDownload(function () use ($rows): void {
             $handle = fopen('php://output', 'wb');
-            fputcsv($handle, ['Periode', 'Target', 'NIK', 'Jabatan', 'Departemen', 'Pabrik', 'Jumlah Evaluasi', 'Rata-rata']);
+            fputcsv($handle, ['Periode', 'Target', 'NIK', 'Jabatan', 'Departemen', 'Pabrik', 'Jumlah Evaluasi', 'Skor 5', 'Skor 4', 'Skor 3', 'Skor 2', 'Skor 1']);
 
             foreach ($rows as $row) {
+                $scorePercentages = $row->score_percentages;
+
                 fputcsv($handle, [
                     sprintf('%02d/%d', $row->period->month, $row->period->year),
                     $row->target->name,
@@ -123,7 +126,11 @@ class EvaluationReportController extends Controller
                     $row->target->departments->pluck('name')->join(', ') ?: '-',
                     $row->target->factories->pluck('name')->join(', ') ?: '-',
                     (int) $row->evaluation_count,
-                    number_format((float) $row->average_score, 2, '.', ''),
+                    $scorePercentages[5].'%',
+                    $scorePercentages[4].'%',
+                    $scorePercentages[3].'%',
+                    $scorePercentages[2].'%',
+                    $scorePercentages[1].'%',
                 ]);
             }
 
@@ -134,40 +141,22 @@ class EvaluationReportController extends Controller
     public function index(EvaluationReportRequest $request): Response
     {
         $period = $this->period($request);
-        $query = Evaluation::query()
-            ->selectRaw('target_id, evaluation_period_id, COUNT(DISTINCT evaluations.id) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
-            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 5) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_5')
-            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 4) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_4')
-            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 3) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_3')
-            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 2) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_2')
-            ->selectRaw('COALESCE(ROUND(100 * SUM(evaluation_details.score = 1) / NULLIF(COUNT(evaluation_details.id), 0)), 0) as score_percentage_1')
-            ->leftJoin('evaluation_details', 'evaluation_details.evaluation_id', '=', 'evaluations.id')
-            ->with(['target.position', 'target.departments', 'target.factories']);
-
-        $rows = $this->applyActiveTemplate($this->applyFilters($query, $request))
-            ->when($period, fn ($query) => $query->where('evaluation_period_id', $period->id))
-            ->groupBy('target_id', 'evaluation_period_id')
-            ->orderByDesc('average_score')
+        $rows = $this->aggregateQuery($request, $period)
             ->paginate($request->integer('per_page', 10))
             ->withQueryString();
 
-        $rows->through(fn (Evaluation $evaluation) => [
-            'target' => [
-                ...$evaluation->target->only(['id', 'name', 'nik', 'avatar_url', 'role']),
-                'position' => $evaluation->target->position?->only(['id', 'name']),
-                'departments' => $evaluation->target->departments->map->only(['id', 'name'])->values(),
-                'factories' => $evaluation->target->factories->map->only(['id', 'name'])->values(),
-            ],
-            'evaluation_count' => (int) $evaluation->evaluation_count,
-            'average_score' => (float) $evaluation->average_score,
-            'score_percentages' => [
-                5 => (int) $evaluation->score_percentage_5,
-                4 => (int) $evaluation->score_percentage_4,
-                3 => (int) $evaluation->score_percentage_3,
-                2 => (int) $evaluation->score_percentage_2,
-                1 => (int) $evaluation->score_percentage_1,
-            ],
-        ]);
+        $rows->through(function (Evaluation $evaluation): array {
+            return [
+                'target' => [
+                    ...$evaluation->target->only(['id', 'name', 'nik', 'avatar_url', 'role']),
+                    'position' => $evaluation->target->position?->only(['id', 'name']),
+                    'departments' => $evaluation->target->departments->map->only(['id', 'name'])->values(),
+                    'factories' => $evaluation->target->factories->map->only(['id', 'name'])->values(),
+                ],
+                'evaluation_count' => (int) $evaluation->evaluation_count,
+                'score_percentages' => $this->scorePercentages($evaluation),
+            ];
+        });
 
         return Inertia::render('Admin/Reports/Index', [
             'periods' => EvaluationPeriod::query()->orderByDesc('year')->orderByDesc('month')->get(['id', 'month', 'year', 'status']),
@@ -180,15 +169,38 @@ class EvaluationReportController extends Controller
 
     private function aggregate(EvaluationReportRequest $request, ?EvaluationPeriod $period)
     {
+        return $this->aggregateQuery($request, $period)
+            ->get()
+            ->each(function (Evaluation $evaluation): void {
+                $evaluation->score_percentages = $this->scorePercentages($evaluation);
+            });
+    }
+
+    private function aggregateQuery(EvaluationReportRequest $request, ?EvaluationPeriod $period): Builder
+    {
+        $detailScores = DB::table('evaluation_details')
+            ->selectRaw('evaluation_id, COUNT(*) as response_count, SUM(score = 1) as score_1_count, SUM(score = 2) as score_2_count, SUM(score = 3) as score_3_count, SUM(score = 4) as score_4_count, SUM(score = 5) as score_5_count')
+            ->groupBy('evaluation_id');
+
         $query = Evaluation::query()
-            ->selectRaw('target_id, evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(average_score), 2) as average_score')
+            ->selectRaw('evaluations.target_id, evaluations.evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score')
+            ->selectRaw('SUM(COALESCE(detail_scores.response_count, 0)) as response_count, SUM(COALESCE(detail_scores.score_1_count, 0)) as score_1_count, SUM(COALESCE(detail_scores.score_2_count, 0)) as score_2_count, SUM(COALESCE(detail_scores.score_3_count, 0)) as score_3_count, SUM(COALESCE(detail_scores.score_4_count, 0)) as score_4_count, SUM(COALESCE(detail_scores.score_5_count, 0)) as score_5_count')
+            ->leftJoinSub($detailScores, 'detail_scores', 'detail_scores.evaluation_id', '=', 'evaluations.id')
             ->with(['target.position', 'target.departments', 'target.factories', 'period:id,month,year']);
 
         return $this->applyActiveTemplate($this->applyFilters($query, $request))
-            ->when($period, fn ($query) => $query->where('evaluation_period_id', $period->id))
-            ->groupBy('target_id', 'evaluation_period_id')
-            ->orderByDesc('average_score')
-            ->get();
+            ->when($period, fn (Builder $query) => $query->where('evaluations.evaluation_period_id', $period->id))
+            ->groupBy('evaluations.target_id', 'evaluations.evaluation_period_id')
+            ->orderByDesc('average_score');
+    }
+
+    private function scorePercentages(Evaluation $evaluation): array
+    {
+        $responseCount = (int) $evaluation->response_count;
+
+        return collect(range(5, 1))->mapWithKeys(fn (int $score) => [
+            $score => $responseCount ? round(((int) $evaluation->{'score_'.$score.'_count'} / $responseCount) * 100) : 0,
+        ])->all();
     }
 
     private function applyActiveTemplate(Builder $query): Builder

@@ -184,6 +184,98 @@ class AdminFeatureTest extends TestCase
             ->has('factories'));
     }
 
+    public function test_evaluation_report_aggregates_score_percentages_across_all_target_answers(): void
+    {
+        $admin = $this->userWithRole('admin');
+        EvaluationPeriod::create(['month' => 1, 'year' => 2026, 'status' => 'closed']);
+        $period = EvaluationPeriod::create(['month' => 2, 'year' => 2026, 'status' => 'active']);
+        $firstEvaluator = User::factory()->create();
+        $target = User::factory()->create();
+        $secondEvaluator = User::factory()->create();
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $target->update(['evaluation_template_id' => $template->id]);
+        $firstEvaluation = Evaluation::create(['evaluator_id' => $firstEvaluator->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 4]);
+        $secondEvaluation = Evaluation::create(['evaluator_id' => $secondEvaluator->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 3]);
+        $scores = [...array_fill(0, 24, 5), ...array_fill(0, 20, 4), ...array_fill(0, 19, 3), ...array_fill(0, 4, 2), ...array_fill(0, 2, 1)];
+
+        foreach ($scores as $index => $score) {
+            $question = Question::create(['evaluation_template_id' => $template->id, 'question_number' => $index + 1, 'question_text' => "Pertanyaan {$index}", 'active' => true]);
+            EvaluationDetail::create(['evaluation_id' => $index < 35 ? $firstEvaluation->id : $secondEvaluation->id, 'question_id' => $question->id, 'score' => $score]);
+        }
+
+        $this->actingAs($admin)->get(route('admin.reports.evaluations', ['period' => $period->id, 'target' => $target->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('rows.data.0.evaluation_count', 2)
+                ->where('rows.data.0.score_percentages.5', 35)
+                ->where('rows.data.0.score_percentages.4', 29)
+                ->where('rows.data.0.score_percentages.3', 28)
+                ->where('rows.data.0.score_percentages.2', 6)
+                ->where('rows.data.0.score_percentages.1', 3)
+                ->missing('rows.data.0.average_score'));
+    }
+
+    public function test_evaluation_report_exports_use_filtered_score_percentages(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $evaluator = User::factory()->create();
+        $position = Position::factory()->create();
+        $department = Department::factory()->create();
+        $factory = Factory::factory()->create();
+        $target = User::factory()->create(['name' => 'Target Export', 'nik' => 'EXPORT-001', 'position_id' => $position->id]);
+        $target->departments()->sync([$department->id]);
+        $target->factories()->sync([$factory->id]);
+        $period = EvaluationPeriod::create(['month' => 2, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $target->update(['evaluation_template_id' => $template->id]);
+        $evaluation = Evaluation::create(['evaluator_id' => $evaluator->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 4]);
+
+        foreach ([5, 5, 4, 3, 2, 1] as $index => $score) {
+            $question = Question::create(['evaluation_template_id' => $template->id, 'question_number' => $index + 1, 'question_text' => "Pertanyaan {$index}", 'active' => true]);
+            EvaluationDetail::create(['evaluation_id' => $evaluation->id, 'question_id' => $question->id, 'score' => $score]);
+        }
+
+        $filters = [
+            'period' => $period->id,
+            'target' => $target->id,
+            'position_id' => $position->id,
+            'department_id' => $department->id,
+            'factory_id' => $factory->id,
+        ];
+        $csv = $this->actingAs($admin)->get(route('admin.reports.evaluations.export', $filters));
+
+        $csv->assertOk()->assertDownload('simano-rekap-evaluasi.csv');
+        $content = $csv->streamedContent();
+        $this->assertStringContainsString('"Jumlah Evaluasi","Skor 5","Skor 4","Skor 3","Skor 2","Skor 1"', $content);
+        $this->assertStringContainsString('02/2026,"Target Export",EXPORT-001', $content);
+        $this->assertStringContainsString('1,33%,17%,17%,17%,17%', $content);
+        $this->assertStringNotContainsString('Rata-rata', $content);
+
+        $this->actingAs($admin)->get(route('admin.reports.evaluations.export.pdf', $filters))
+            ->assertOk()
+            ->assertDownload('simano-rekap-evaluasi.pdf');
+    }
+
+    public function test_evaluation_report_returns_zero_percentages_without_answers(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $evaluator = User::factory()->create();
+        $target = User::factory()->create();
+        $period = EvaluationPeriod::create(['month' => 2, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $target->update(['evaluation_template_id' => $template->id]);
+        Evaluation::create(['evaluator_id' => $evaluator->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 0]);
+
+        $this->actingAs($admin)->get(route('admin.reports.evaluations', ['period' => $period->id, 'target' => $target->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page
+                ->where('rows.data.0.score_percentages.5', 0)
+                ->where('rows.data.0.score_percentages.4', 0)
+                ->where('rows.data.0.score_percentages.3', 0)
+                ->where('rows.data.0.score_percentages.2', 0)
+                ->where('rows.data.0.score_percentages.1', 0));
+    }
+
     public function test_admin_report_does_not_expose_evaluator_identity(): void
     {
         $admin = $this->userWithRole('admin');

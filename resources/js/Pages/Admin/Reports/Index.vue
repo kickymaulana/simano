@@ -6,7 +6,7 @@ import { route } from 'ziggy-js';
 type Item = { id: number; name: string };
 type Target = Item & { nik: string; position?: Item | null };
 type Period = { id: number; month: number; year: number; status: string };
-type Row = { target: Target & { avatar_url: string | null; role: string; departments: Item[]; factories: Item[] }; evaluation_count: number; average_score: number; score_percentages: Record<1 | 2 | 3 | 4 | 5, number> };
+type Row = { target: Target & { avatar_url: string | null; role: string; departments: Item[]; factories: Item[] }; evaluation_count: number; score_percentages: Record<1 | 2 | 3 | 4 | 5, number> };
 type Pagination = { data: Row[]; current_page: number; last_page: number; total: number; links: { url: string | null; label: string; active: boolean }[] };
 type Filters = { target?: number; position_id?: number; factory_id?: number; department_id?: number };
 const props = defineProps<{ periods: Period[]; selectedPeriod: Period | null; targets: Target[]; positions: Item[]; factories: Item[]; departments: Item[]; filters: Filters; rows: Pagination }>();
