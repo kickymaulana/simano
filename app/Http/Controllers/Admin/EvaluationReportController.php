@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -167,7 +168,7 @@ class EvaluationReportController extends Controller
         ]);
     }
 
-    private function aggregate(EvaluationReportRequest $request, ?EvaluationPeriod $period)
+    private function aggregate(EvaluationReportRequest $request, ?EvaluationPeriod $period): Collection
     {
         return $this->aggregateQuery($request, $period)
             ->get()
@@ -179,12 +180,12 @@ class EvaluationReportController extends Controller
     private function aggregateQuery(EvaluationReportRequest $request, ?EvaluationPeriod $period): Builder
     {
         $detailScores = DB::table('evaluation_details')
-            ->selectRaw('evaluation_id, COUNT(*) as response_count, SUM(score = 1) as score_1_count, SUM(score = 2) as score_2_count, SUM(score = 3) as score_3_count, SUM(score = 4) as score_4_count, SUM(score = 5) as score_5_count')
+            ->selectRaw('evaluation_id, COUNT(*) as response_count')
             ->groupBy('evaluation_id');
 
         $query = Evaluation::query()
-            ->selectRaw('evaluations.target_id, evaluations.evaluation_period_id, COUNT(*) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score')
-            ->selectRaw('SUM(COALESCE(detail_scores.response_count, 0)) as response_count, SUM(COALESCE(detail_scores.score_1_count, 0)) as score_1_count, SUM(COALESCE(detail_scores.score_2_count, 0)) as score_2_count, SUM(COALESCE(detail_scores.score_3_count, 0)) as score_3_count, SUM(COALESCE(detail_scores.score_4_count, 0)) as score_4_count, SUM(COALESCE(detail_scores.score_5_count, 0)) as score_5_count')
+            ->selectRaw('evaluations.target_id, evaluations.evaluation_period_id, MAX(evaluations.evaluation_template_id) as evaluation_template_id, COUNT(*) as evaluation_count, ROUND(AVG(evaluations.average_score), 2) as average_score')
+            ->selectRaw('SUM(COALESCE(detail_scores.response_count, 0)) as response_count')
             ->leftJoinSub($detailScores, 'detail_scores', 'detail_scores.evaluation_id', '=', 'evaluations.id')
             ->with(['target.position', 'target.departments', 'target.factories', 'period:id,month,year']);
 
@@ -196,10 +197,21 @@ class EvaluationReportController extends Controller
 
     private function scorePercentages(Evaluation $evaluation): array
     {
-        $responseCount = (int) $evaluation->response_count;
+        $questions = DB::table('evaluation_details')
+            ->join('evaluations', 'evaluations.id', '=', 'evaluation_details.evaluation_id')
+            ->where('evaluations.target_id', $evaluation->target_id)
+            ->where('evaluations.evaluation_period_id', $evaluation->evaluation_period_id)
+            ->where('evaluations.evaluation_template_id', $evaluation->evaluation_template_id)
+            ->selectRaw('question_id, COUNT(*) as response_count, SUM(score = 1) as score_1_count, SUM(score = 2) as score_2_count, SUM(score = 3) as score_3_count, SUM(score = 4) as score_4_count, SUM(score = 5) as score_5_count')
+            ->groupBy('question_id')
+            ->get();
+
+        if ($questions->isEmpty()) {
+            return collect(range(5, 1))->mapWithKeys(fn (int $score) => [$score => 0])->all();
+        }
 
         return collect(range(5, 1))->mapWithKeys(fn (int $score) => [
-            $score => $responseCount ? round(((int) $evaluation->{'score_'.$score.'_count'} / $responseCount) * 100) : 0,
+            $score => round($questions->average(fn ($question): float => round(((int) $question->{'score_'.$score.'_count'} / (int) $question->response_count) * 100))),
         ])->all();
     }
 
@@ -214,7 +226,7 @@ class EvaluationReportController extends Controller
     private function applyFilters(Builder $query, EvaluationReportRequest $request): Builder
     {
         return $query
-            ->when($request->filled('target'), fn (Builder $query) => $query->where('target_id', $request->integer('target')))
+            ->when($request->filled('target'), fn (Builder $query) => $query->where('evaluations.target_id', $request->integer('target')))
             ->when($request->filled('position_id'), fn (Builder $query) => $query->whereHas('target', fn (Builder $target) => $target->where('position_id', $request->integer('position_id'))))
             ->when($request->filled('factory_id'), fn (Builder $query) => $query->whereHas('target.factories', fn (Builder $factory) => $factory->whereKey($request->integer('factory_id'))))
             ->when($request->filled('department_id'), fn (Builder $query) => $query->whereHas('target.departments', fn (Builder $department) => $department->whereKey($request->integer('department_id'))));

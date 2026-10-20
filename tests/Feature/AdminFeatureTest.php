@@ -215,6 +215,41 @@ class AdminFeatureTest extends TestCase
                 ->missing('rows.data.0.average_score'));
     }
 
+    public function test_evaluation_report_averages_rounded_question_percentages(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $period = EvaluationPeriod::create(['month' => 2, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $target = User::factory()->create(['evaluation_template_id' => $template->id]);
+        $firstQuestion = Question::create(['evaluation_template_id' => $template->id, 'question_number' => 1, 'question_text' => 'Pertanyaan 1', 'active' => true]);
+        $secondQuestion = Question::create(['evaluation_template_id' => $template->id, 'question_number' => 2, 'question_text' => 'Pertanyaan 2', 'active' => true]);
+        $firstScores = [...array_fill(0, 22, 5), ...array_fill(0, 30, 4), ...array_fill(0, 45, 3), ...array_fill(0, 3, 2)];
+        $secondScores = [...array_fill(0, 22, 5), ...array_fill(0, 30, 4), ...array_fill(0, 47, 3), ...array_fill(0, 3, 2)];
+
+        foreach (range(0, 101) as $index) {
+            $evaluation = Evaluation::create(['evaluator_id' => User::factory()->create()->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 4]);
+            if (isset($firstScores[$index])) {
+                EvaluationDetail::create(['evaluation_id' => $evaluation->id, 'question_id' => $firstQuestion->id, 'score' => $firstScores[$index]]);
+            }
+            EvaluationDetail::create(['evaluation_id' => $evaluation->id, 'question_id' => $secondQuestion->id, 'score' => $secondScores[$index]]);
+        }
+
+        $response = $this->actingAs($admin)->get(route('admin.reports.evaluations', ['period' => $period->id, 'target' => $target->id]));
+
+        $response->assertOk()->assertInertia(fn ($page) => $page
+            ->where('rows.data.0.score_percentages.5', 22)
+            ->where('rows.data.0.score_percentages.4', 30)
+            ->where('rows.data.0.score_percentages.3', 46)
+            ->where('rows.data.0.score_percentages.2', 3)
+            ->where('rows.data.0.score_percentages.1', 0));
+
+        $csv = $this->actingAs($admin)->get(route('admin.reports.evaluations.export', ['period' => $period->id, 'target' => $target->id]));
+
+        $csv->assertDownload('simano-rekap-evaluasi.csv');
+        $this->assertStringContainsString('02/2026,', $csv->streamedContent());
+        $this->assertStringContainsString('2,22%,30%,46%,3%,0%', $csv->streamedContent());
+    }
+
     public function test_evaluation_report_exports_use_filtered_score_percentages(): void
     {
         $admin = $this->userWithRole('admin');
