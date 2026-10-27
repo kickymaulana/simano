@@ -18,6 +18,7 @@ class DatabaseSeeder extends Seeder
         $this->call(RolesAndPermissionsSeeder::class);
         $this->call(OrgSeeder::class);
         $this->call(EvaluationTemplateSeeder::class);
+        $this->call(EvaluationRuleSeeder::class);
 
         $user = User::updateOrCreate(['nik' => 'D260065'], [
             'name' => 'Kicky Maulana',

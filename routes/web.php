@@ -71,6 +71,9 @@ Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->g
     Route::post('/settings/evaluation-reset', [EvaluationReportController::class, 'reset'])->name('settings.evaluation-reset.store');
     Route::get('/reports/evaluations/atasan', AtasanEvaluationReportController::class)->name('reports.evaluations.atasan');
     Route::get('/reports/evaluations/atasan/evaluators', [AtasanEvaluationReportController::class, 'evaluators'])->name('reports.evaluations.atasan.evaluators');
+    Route::get('/reports/evaluations/atasan/evaluators/export', [AtasanEvaluationReportController::class, 'exportEvaluators'])->name('reports.evaluations.atasan.evaluators.export');
+    Route::get('/reports/evaluations/atasan/pending-evaluators', [AtasanEvaluationReportController::class, 'pendingEvaluators'])->name('reports.evaluations.atasan.pending-evaluators');
+    Route::get('/reports/evaluations/atasan/pending-evaluators/export', [AtasanEvaluationReportController::class, 'exportPendingEvaluators'])->name('reports.evaluations.atasan.pending-evaluators.export');
     Route::delete('/reports/evaluations/atasan/{period}/{target}/evaluators/{evaluation}', [AtasanEvaluationReportController::class, 'destroy'])->name('reports.evaluations.atasan.evaluators.destroy');
     Route::get('/reports/evaluations/atasan/pdf', [AtasanEvaluationReportController::class, 'exportPdf'])->name('reports.evaluations.atasan.pdf');
     Route::get('/reports/evaluations/export', [EvaluationReportController::class, 'export'])->name('reports.evaluations.export');
