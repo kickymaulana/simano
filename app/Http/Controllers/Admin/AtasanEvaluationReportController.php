@@ -5,8 +5,8 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Evaluation;
 use App\Models\EvaluationDetail;
-use App\Models\EvaluationRule;
 use App\Models\EvaluationPeriod;
+use App\Models\EvaluationRule;
 use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -14,10 +14,12 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
-use Symfony\Component\HttpFoundation\StreamedResponse;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class AtasanEvaluationReportController extends Controller
 {
@@ -53,23 +55,11 @@ class AtasanEvaluationReportController extends Controller
             $targetCategory = strtolower((string) $target->evaluationTemplate?->target_category);
             $targetPositionId = $target->position?->id;
 
-            if ($targetCategory !== 'hrd' && $targetPositionId) {
-                $evaluatorPositionIds = EvaluationRule::query()
-                    ->where('target_position_id', $targetPositionId)
-                    ->where('active', true)
-                    ->pluck('evaluator_position_id');
-
-                $departmentIds = $target->departments->pluck('id');
-                $factoryIds = $target->factories->pluck('id');
-
+            if ($targetPositionId || $targetCategory === 'hrd') {
+                $eligibleIds = $this->eligibleEvaluatorIds($target) ?? collect();
                 $eligibleEvaluators = User::query()
                     ->with(['position:id,name', 'departments:id,name', 'factories:id,name'])
-                    ->where('active', true)
-                    ->where('is_approved', true)
-                    ->where('id', '!=', $target->id)
-                    ->whereIn('position_id', $evaluatorPositionIds)
-                    ->when($departmentIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('departments', fn (Builder $departmentQuery) => $departmentQuery->whereIn('departments.id', $departmentIds)))
-                    ->when($factoryIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('factories', fn (Builder $factoryQuery) => $factoryQuery->whereIn('factories.id', $factoryIds)))
+                    ->whereIn('id', $eligibleIds)
                     ->orderBy('name')
                     ->get();
 
@@ -167,9 +157,13 @@ class AtasanEvaluationReportController extends Controller
             ->when($eligibleIds !== null, fn (Builder $query) => $query->whereIn('evaluator_id', $eligibleIds))->latest('submitted_at')->get();
 
         return response()->streamDownload(function () use ($rows): void {
-            $handle = fopen('php://output', 'wb'); fwrite($handle, "\xEF\xBB\xBF");
+            $handle = fopen('php://output', 'wb');
+            fwrite($handle, "\xEF\xBB\xBF");
             fputcsv($handle, ['No.', 'Nama', 'NIK', 'Jabatan', 'Departemen', 'Pabrik', 'Waktu Penilaian']);
-            foreach ($rows as $index => $evaluation) { $user = $evaluation->evaluator; fputcsv($handle, [$index + 1, $user->name, $user->nik, $user->position?->name, $user->departments->pluck('name')->join(', '), $user->factories->pluck('name')->join(', '), $evaluation->submitted_at?->format('d/m/Y H:i')]); }
+            foreach ($rows as $index => $evaluation) {
+                $user = $evaluation->evaluator;
+                fputcsv($handle, [$index + 1, $user->name, $user->nik, $user->position?->name, $user->departments->pluck('name')->join(', '), $user->factories->pluck('name')->join(', '), $evaluation->submitted_at?->format('d/m/Y H:i')]);
+            }
             fclose($handle);
         }, "sudah-menilai-{$target->id}-{$period->id}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
@@ -183,40 +177,25 @@ class AtasanEvaluationReportController extends Controller
         $period = EvaluationPeriod::findOrFail($validated['period']);
         $target = User::query()->with(['position:id,name', 'departments:id,name', 'factories:id,name', 'evaluationTemplate'])->findOrFail($validated['target']);
 
-        if (strtolower((string) $target->evaluationTemplate?->target_category) === 'hrd' || ! $target->position) {
-            $pending = collect();
-        } else {
-            $positionIds = EvaluationRule::query()
-                ->where('target_position_id', $target->position->id)
-                ->where('active', true)
-                ->pluck('evaluator_position_id');
-            $departmentIds = $target->departments->pluck('id');
-            $factoryIds = $target->factories->pluck('id');
-            $submittedIds = Evaluation::query()
-                ->where('evaluation_period_id', $period->id)
-                ->where('target_id', $target->id)
-                ->where('evaluation_template_id', $target->evaluation_template_id)
-                ->pluck('evaluator_id');
-
-            $pending = User::query()
-                ->with(['position:id,name', 'departments:id,name', 'factories:id,name'])
-                ->where('active', true)
-                ->where('is_approved', true)
-                ->where('id', '!=', $target->id)
-                ->whereIn('position_id', $positionIds)
-                ->when($departmentIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('departments', fn (Builder $q) => $q->whereIn('departments.id', $departmentIds)))
-                ->when($factoryIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('factories', fn (Builder $q) => $q->whereIn('factories.id', $factoryIds)))
-                ->whereNotIn('id', $submittedIds)
-                ->orderBy('name')
-                ->paginate(20)
-                ->withQueryString();
-        }
+        $eligibleIds = $this->eligibleEvaluatorIds($target) ?? collect();
+        $submittedIds = Evaluation::query()
+            ->where('evaluation_period_id', $period->id)
+            ->where('target_id', $target->id)
+            ->where('evaluation_template_id', $target->evaluation_template_id)
+            ->pluck('evaluator_id');
+        $pending = User::query()
+            ->with(['position:id,name', 'departments:id,name', 'factories:id,name'])
+            ->whereIn('id', $eligibleIds)
+            ->whereNotIn('id', $submittedIds)
+            ->orderBy('name')
+            ->paginate(20)
+            ->withQueryString();
 
         return Inertia::render('Admin/Reports/PendingEvaluators', [
             'period' => $period->only(['id', 'month', 'year']),
             'target' => $target->only(['id', 'name', 'nik']),
             'targetPosition' => $target->position?->only(['id', 'name']),
-            'pendingEvaluators' => $pending instanceof \Illuminate\Pagination\LengthAwarePaginator ? $pending->through(fn (User $evaluator): array => [
+            'pendingEvaluators' => $pending instanceof LengthAwarePaginator ? $pending->through(fn (User $evaluator): array => [
                 'id' => $evaluator->id,
                 'name' => $evaluator->name,
                 'avatar_url' => $evaluator->avatar_url,
@@ -238,21 +217,35 @@ class AtasanEvaluationReportController extends Controller
         $rows = $eligibleIds === null ? collect() : User::query()->with(['position:id,name', 'departments:id,name', 'factories:id,name'])->whereIn('id', $eligibleIds)->whereNotIn('id', $submittedIds)->orderBy('name')->get();
 
         return response()->streamDownload(function () use ($rows): void {
-            $handle = fopen('php://output', 'wb'); fwrite($handle, "\xEF\xBB\xBF");
+            $handle = fopen('php://output', 'wb');
+            fwrite($handle, "\xEF\xBB\xBF");
             fputcsv($handle, ['No.', 'Nama', 'NIK', 'Jabatan', 'Departemen', 'Pabrik']);
-            foreach ($rows as $index => $user) { fputcsv($handle, [$index + 1, $user->name, $user->nik, $user->position?->name, $user->departments->pluck('name')->join(', '), $user->factories->pluck('name')->join(', ')]); }
+            foreach ($rows as $index => $user) {
+                fputcsv($handle, [$index + 1, $user->name, $user->nik, $user->position?->name, $user->departments->pluck('name')->join(', '), $user->factories->pluck('name')->join(', ')]);
+            }
             fclose($handle);
         }, "belum-menilai-{$target->id}-{$period->id}.csv", ['Content-Type' => 'text/csv; charset=UTF-8']);
     }
 
-    private function eligibleEvaluatorIds(User $target): ?\Illuminate\Support\Collection
+    private function eligibleEvaluatorIds(User $target): ?Collection
     {
-        if (strtolower((string) $target->evaluationTemplate?->target_category) === 'hrd' || ! $target->position) return null;
-        $positionIds = EvaluationRule::query()->where('target_position_id', $target->position->id)->where('active', true)->pluck('evaluator_position_id');
-        $departmentIds = $target->departments->pluck('id'); $factoryIds = $target->factories->pluck('id');
+        $targetCategory = strtolower((string) $target->evaluationTemplate?->target_category);
+        $rules = EvaluationRule::query()->where('active', true);
+        if ($targetCategory === 'hrd') {
+            $rules->where('target_category', 'hrd')->whereNull('target_position_id');
+        } elseif ($target->position) {
+            $rules->whereNull('target_category')->where('target_position_id', $target->position->id);
+        } else {
+            return collect();
+        }
+        $ruleRows = $rules->get(['evaluator_position_id', 'same_department', 'same_factory']);
+        $positionIds = $ruleRows->pluck('evaluator_position_id')->unique();
+        $departmentIds = $target->departments->pluck('id');
+        $factoryIds = $target->factories->pluck('id');
+
         return User::query()->where('active', true)->where('is_approved', true)->where('id', '!=', $target->id)->whereIn('position_id', $positionIds)
-            ->when($departmentIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('departments', fn (Builder $q) => $q->whereIn('departments.id', $departmentIds)))
-            ->when($factoryIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('factories', fn (Builder $q) => $q->whereIn('factories.id', $factoryIds)))->pluck('id');
+            ->when($targetCategory !== 'hrd' && $departmentIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('departments', fn (Builder $q) => $q->whereIn('departments.id', $departmentIds)))
+            ->when($targetCategory !== 'hrd' && $factoryIds->isNotEmpty(), fn (Builder $query) => $query->whereHas('factories', fn (Builder $q) => $q->whereIn('factories.id', $factoryIds)))->pluck('id');
     }
 
     public function destroy(EvaluationPeriod $period, User $target, Evaluation $evaluation): RedirectResponse

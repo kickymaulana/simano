@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Employee\TargetSearchRequest;
 use App\Models\Department;
 use App\Models\EvaluationPeriod;
+use App\Models\EvaluationRule;
 use App\Models\Factory;
 use App\Models\Position;
 use App\Models\User;
@@ -22,10 +23,30 @@ class TargetController extends Controller
             ? $request->user()->submittedEvaluations()->where('evaluation_period_id', $periodId)->pluck('target_id')->all()
             : [];
 
+        $evaluator = $request->user()->load(['position', 'departments', 'factories']);
+        $hrdRuleExists = $evaluator->position
+            ? EvaluationRule::query()->where('evaluator_position_id', $evaluator->position->id)->where('target_category', 'hrd')->whereNull('target_position_id')->where('active', true)->exists()
+            : false;
+        $targetPositionIds = $evaluator->position
+            ? EvaluationRule::query()->where('evaluator_position_id', $evaluator->position->id)->whereNull('target_category')->whereNotNull('target_position_id')->where('active', true)->pluck('target_position_id')
+            : collect();
+        $departmentIds = $evaluator->departments->pluck('id');
+        $factoryIds = $evaluator->factories->pluck('id');
+
         $query = User::query()
-            ->with(['position', 'departments', 'factories'])
+            ->with(['position', 'departments', 'factories', 'evaluationTemplate'])
             ->where('active', true)
             ->where('id', '!=', $request->user()->getKey())
+            ->where(function (Builder $query) use ($hrdRuleExists, $targetPositionIds, $departmentIds, $factoryIds): void {
+                $query->where(function (Builder $query) use ($hrdRuleExists): void {
+                    $query->whereHas('evaluationTemplate', fn (Builder $q) => $q->where('target_category', 'hrd'))
+                        ->when(! $hrdRuleExists, fn (Builder $q) => $q->whereRaw('1 = 0'));
+                })->orWhere(function (Builder $query) use ($targetPositionIds, $departmentIds, $factoryIds): void {
+                    $query->whereIn('position_id', $targetPositionIds)
+                        ->when($departmentIds->isNotEmpty(), fn (Builder $q) => $q->whereHas('departments', fn (Builder $departmentQuery) => $departmentQuery->whereIn('departments.id', $departmentIds)))
+                        ->when($factoryIds->isNotEmpty(), fn (Builder $q) => $q->whereHas('factories', fn (Builder $factoryQuery) => $factoryQuery->whereIn('factories.id', $factoryIds)));
+                });
+            })
             ->when($request->filled('q'), function (Builder $query) use ($request): void {
                 $term = $request->string('q')->toString();
                 $query->where(function (Builder $query) use ($term): void {
