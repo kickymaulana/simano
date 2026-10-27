@@ -39,6 +39,7 @@ class AtasanEvaluationReportController extends Controller
         $evaluators = collect();
         $eligibleEvaluatorCount = 0;
         $pendingEvaluatorCount = 0;
+        $eligibleEvaluatorIds = null;
 
         if ($period && $target && $templateId) {
             $evaluators = Evaluation::query()
