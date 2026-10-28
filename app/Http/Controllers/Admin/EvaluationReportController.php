@@ -13,6 +13,7 @@ use App\Models\User;
 use App\Services\Audit\AuditLogger;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -189,7 +190,7 @@ class EvaluationReportController extends Controller
             ->leftJoinSub($detailScores, 'detail_scores', 'detail_scores.evaluation_id', '=', 'evaluations.id')
             ->with(['target.position', 'target.departments', 'target.factories', 'period:id,month,year']);
 
-        return $this->applyActiveTemplate($this->applyFilters($query, $request))
+        return $this->applyEligibleEvaluatorScope($this->applyActiveTemplate($this->applyFilters($query, $request)))
             ->when($period, fn (Builder $query) => $query->where('evaluations.evaluation_period_id', $period->id))
             ->groupBy('evaluations.target_id', 'evaluations.evaluation_period_id')
             ->orderByDesc('average_score');
@@ -202,6 +203,10 @@ class EvaluationReportController extends Controller
             ->where('evaluations.target_id', $evaluation->target_id)
             ->where('evaluations.evaluation_period_id', $evaluation->evaluation_period_id)
             ->where('evaluations.evaluation_template_id', $evaluation->evaluation_template_id)
+            ->join('users as target_users', 'target_users.id', '=', 'evaluations.target_id')
+            ->where(function (QueryBuilder $query): void {
+                $this->applyEligibleEvaluatorScope($query, 'target_users');
+            })
             ->selectRaw('question_id, COUNT(*) as response_count, SUM(score = 1) as score_1_count, SUM(score = 2) as score_2_count, SUM(score = 3) as score_3_count, SUM(score = 4) as score_4_count, SUM(score = 5) as score_5_count')
             ->groupBy('question_id')
             ->get();
@@ -213,6 +218,71 @@ class EvaluationReportController extends Controller
         return collect(range(5, 1))->mapWithKeys(fn (int $score) => [
             $score => round($questions->average(fn ($question): float => round(((int) $question->{'score_'.$score.'_count'} / (int) $question->response_count) * 100))),
         ])->all();
+    }
+
+    private function applyEligibleEvaluatorScope(Builder|QueryBuilder $query, string $targetAlias = 'users'): Builder|QueryBuilder
+    {
+        return $query->where(function (Builder|QueryBuilder $scope) use ($targetAlias): void {
+            $scope->whereNull($targetAlias.'.position_id')
+                ->orWhereExists(function (QueryBuilder $legacyEvaluatorQuery): void {
+                    $legacyEvaluatorQuery->selectRaw('1')
+                        ->from('users as legacy_evaluator_users')
+                        ->whereColumn('legacy_evaluator_users.id', 'evaluations.evaluator_id')
+                        ->whereNull('legacy_evaluator_users.position_id');
+                })
+                ->orWhereExists(function (QueryBuilder $ruleQuery) use ($targetAlias): void {
+                    $ruleQuery->selectRaw('1')
+                        ->from('users as evaluator_users')
+                        ->join('evaluation_rules', function ($join): void {
+                            $join->on('evaluation_rules.evaluator_position_id', '=', 'evaluator_users.position_id')
+                                ->where('evaluation_rules.active', true);
+                        })
+                        ->where('evaluator_users.active', true)
+                        ->where('evaluator_users.is_approved', true)
+                        ->whereColumn('evaluator_users.id', '!=', $targetAlias.'.id')
+                        ->whereColumn('evaluator_users.id', 'evaluations.evaluator_id')
+                        ->where(function (QueryBuilder $ruleQuery) use ($targetAlias): void {
+                            $ruleQuery->where(function (QueryBuilder $hrdQuery) use ($targetAlias): void {
+                                $hrdQuery->where('evaluation_rules.target_category', 'hrd')
+                                    ->whereNull('evaluation_rules.target_position_id')
+                                    ->whereExists(function (QueryBuilder $templateQuery) use ($targetAlias): void {
+                                        $templateQuery->selectRaw('1')
+                                            ->from('evaluation_templates as target_templates')
+                                            ->whereColumn('target_templates.id', $targetAlias.'.evaluation_template_id')
+                                            ->where('target_templates.target_category', 'hrd');
+                                    });
+                            })->orWhere(function (QueryBuilder $positionQuery) use ($targetAlias): void {
+                                $positionQuery->whereNull('evaluation_rules.target_category')
+                                    ->whereColumn('evaluation_rules.target_position_id', $targetAlias.'.position_id')
+                                    ->where(function (QueryBuilder $scopeQuery) use ($targetAlias): void {
+                                        $scopeQuery->where(function (QueryBuilder $departmentQuery) use ($targetAlias): void {
+                                            $departmentQuery->where('evaluation_rules.same_department', false)
+                                                ->orWhereExists(function (QueryBuilder $pivotQuery) use ($targetAlias): void {
+                                                    $pivotQuery->selectRaw('1')->from('department_user as evaluator_departments')
+                                                        ->whereColumn('evaluator_departments.user_id', 'evaluator_users.id')
+                                                        ->whereExists(function (QueryBuilder $targetDepartmentQuery) use ($targetAlias): void {
+                                                            $targetDepartmentQuery->selectRaw('1')->from('department_user as target_departments')
+                                                                ->whereColumn('target_departments.department_id', 'evaluator_departments.department_id')
+                                                                ->whereColumn('target_departments.user_id', $targetAlias.'.id');
+                                                        });
+                                                });
+                                        })->where(function (QueryBuilder $factoryQuery) use ($targetAlias): void {
+                                            $factoryQuery->where('evaluation_rules.same_factory', false)
+                                                ->orWhereExists(function (QueryBuilder $pivotQuery) use ($targetAlias): void {
+                                                    $pivotQuery->selectRaw('1')->from('factory_user as evaluator_factories')
+                                                        ->whereColumn('evaluator_factories.user_id', 'evaluator_users.id')
+                                                        ->whereExists(function (QueryBuilder $targetFactoryQuery) use ($targetAlias): void {
+                                                            $targetFactoryQuery->selectRaw('1')->from('factory_user as target_factories')
+                                                                ->whereColumn('target_factories.factory_id', 'evaluator_factories.factory_id')
+                                                                ->whereColumn('target_factories.user_id', $targetAlias.'.id');
+                                                        });
+                                                });
+                                        });
+                                    });
+                            });
+                        });
+                });
+        });
     }
 
     private function applyActiveTemplate(Builder $query): Builder

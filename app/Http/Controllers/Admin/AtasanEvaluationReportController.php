@@ -42,30 +42,32 @@ class AtasanEvaluationReportController extends Controller
         $eligibleEvaluatorIds = null;
 
         if ($period && $target && $templateId) {
+            $targetCategory = strtolower((string) $target->evaluationTemplate?->target_category);
+            $targetPositionId = $target->position?->id;
+
+            if ($targetPositionId || $targetCategory === 'hrd') {
+                $eligibleEvaluatorIds = $this->eligibleEvaluatorIds($target) ?? collect();
+            }
+
             $evaluators = Evaluation::query()
                 ->with(['evaluator.position:id,name', 'evaluator.departments:id,name'])
                 ->where('evaluation_period_id', $period->id)
                 ->where('target_id', $target->id)
                 ->when($templateId, fn (Builder $query, int $id) => $query->where('evaluation_template_id', $id))
+                ->when($eligibleEvaluatorIds !== null, fn (Builder $query) => $query->whereIn('evaluator_id', $eligibleEvaluatorIds))
                 ->get()
                 ->unique('evaluator_id')
                 ->map(fn (Evaluation $evaluation): array => ['id' => $evaluation->evaluator->id, 'name' => $evaluation->evaluator->name, 'nik' => $evaluation->evaluator->nik, 'position' => $evaluation->evaluator->position?->name])
                 ->values();
             $evaluatorCount = $evaluators->count();
 
-            $targetCategory = strtolower((string) $target->evaluationTemplate?->target_category);
-            $targetPositionId = $target->position?->id;
-
-            if ($targetPositionId || $targetCategory === 'hrd') {
-                $eligibleIds = $this->eligibleEvaluatorIds($target) ?? collect();
+            if ($eligibleEvaluatorIds !== null) {
                 $eligibleEvaluators = User::query()
                     ->with(['position:id,name', 'departments:id,name', 'factories:id,name'])
-                    ->whereIn('id', $eligibleIds)
+                    ->whereIn('id', $eligibleEvaluatorIds)
                     ->orderBy('name')
                     ->get();
 
-                $submittedEvaluatorIds = $evaluators->pluck('id')->filter()->unique();
-                $evaluatorCount = $eligibleEvaluators->whereIn('id', $submittedEvaluatorIds)->count();
                 $eligibleEvaluatorCount = $eligibleEvaluators->count();
                 $pendingEvaluatorCount = $eligibleEvaluatorCount - $evaluatorCount;
             }
@@ -73,7 +75,12 @@ class AtasanEvaluationReportController extends Controller
             $rows = EvaluationDetail::query()
                 ->selectRaw('question_id, COUNT(*) as response_count, SUM(score) as total_score, SUM(score = 1) as score_1, SUM(score = 2) as score_2, SUM(score = 3) as score_3, SUM(score = 4) as score_4, SUM(score = 5) as score_5')
                 ->with('question:id,question_number,question_text')
-                ->whereHas('evaluation', fn (Builder $query) => $query->where('evaluation_period_id', $period->id)->where('target_id', $target->id)->when($templateId, fn (Builder $query, int $id) => $query->where('evaluation_template_id', $id)))
+                ->whereHas('evaluation', function (Builder $query) use ($period, $target, $templateId, $eligibleEvaluatorIds): void {
+                    $query->where('evaluation_period_id', $period->id)
+                        ->where('target_id', $target->id)
+                        ->when($templateId, fn (Builder $query, int $id) => $query->where('evaluation_template_id', $id))
+                        ->when($eligibleEvaluatorIds !== null, fn (Builder $query) => $query->whereIn('evaluator_id', $eligibleEvaluatorIds));
+                })
                 ->groupBy('question_id')
                 ->orderBy('question_id')
                 ->get()
