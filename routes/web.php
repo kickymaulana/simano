@@ -5,6 +5,7 @@ use App\Http\Controllers\Admin\AttentionController;
 use App\Http\Controllers\Admin\AuditLogController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DepartmentController;
+use App\Http\Controllers\Admin\EvaluationMonitoringController;
 use App\Http\Controllers\Admin\EvaluationParticipationController;
 use App\Http\Controllers\Admin\EvaluationPeriodController;
 use App\Http\Controllers\Admin\EvaluationReportController;
@@ -52,6 +53,9 @@ Route::middleware(['auth', 'role:employee|admin|hr'])->group(function () {
 Route::middleware(['auth', 'role:admin|hr'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
     Route::get('/evaluation-participation', EvaluationParticipationController::class)->name('evaluation-participation.index');
+    Route::get('/evaluation-rules', [EvaluationMonitoringController::class, 'rules'])->name('evaluation-rules.index');
+    Route::get('/reports/pending-evaluations', [EvaluationMonitoringController::class, 'pending'])->name('reports.pending-evaluations');
+    Route::get('/reports/pending-evaluations/export', [EvaluationMonitoringController::class, 'exportPending'])->name('reports.pending-evaluations.export');
     Route::get('/question-analysis', QuestionAnalysisController::class)->name('question-analysis.index');
     Route::get('/organization-scorecard', OrganizationScorecardController::class)->name('organization-scorecard.index');
     Route::get('/attention', AttentionController::class)->name('attention.index');

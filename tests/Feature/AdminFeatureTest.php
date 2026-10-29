@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\Evaluation;
 use App\Models\EvaluationDetail;
 use App\Models\EvaluationPeriod;
+use App\Models\EvaluationRule;
 use App\Models\EvaluationTemplate;
 use App\Models\Factory;
 use App\Models\Position;
@@ -453,6 +454,41 @@ class AdminFeatureTest extends TestCase
         $this->assertTrue($pending->departments()->whereKey($department->id)->exists());
         $this->assertDatabaseMissing('requested_factory_user', ['user_id' => $pending->id]);
         $this->assertDatabaseMissing('requested_department_user', ['user_id' => $pending->id]);
+    }
+
+    public function test_admin_can_view_evaluation_rules_and_global_pending_pairs(): void
+    {
+        $admin = $this->userWithRole('admin');
+        $period = EvaluationPeriod::create(['month' => 10, 'year' => 2026, 'status' => 'active']);
+        $template = EvaluationTemplate::create(['target_category' => 'atasan', 'active' => true]);
+        $department = Department::factory()->create();
+        $factory = Factory::factory()->create();
+        $evaluatorPosition = Position::factory()->create(['name' => 'LEADER']);
+        $targetPosition = Position::factory()->create(['name' => 'SUPERVISOR']);
+        $target = User::factory()->create(['nik' => 'TARGET-001', 'name' => 'Target User', 'position_id' => $targetPosition->id, 'evaluation_template_id' => $template->id, 'active' => true, 'is_approved' => true]);
+        $pending = User::factory()->create(['nik' => 'PENDING-001', 'name' => 'Pending User', 'position_id' => $evaluatorPosition->id, 'active' => true, 'is_approved' => true]);
+        $completed = User::factory()->create(['nik' => 'DONE-001', 'name' => 'Done User', 'position_id' => $evaluatorPosition->id, 'active' => true, 'is_approved' => true]);
+        $target->departments()->sync([$department->id]);
+        $pending->departments()->sync([$department->id]);
+        $completed->departments()->sync([$department->id]);
+        $target->factories()->sync([$factory->id]);
+        $pending->factories()->sync([$factory->id]);
+        $completed->factories()->sync([$factory->id]);
+        EvaluationRule::create(['evaluator_position_id' => $evaluatorPosition->id, 'target_position_id' => $targetPosition->id, 'same_department' => true, 'same_factory' => true, 'active' => true]);
+        Evaluation::create(['evaluator_id' => $completed->id, 'target_id' => $target->id, 'evaluation_template_id' => $template->id, 'evaluation_period_id' => $period->id, 'target_category' => 'atasan', 'average_score' => 4]);
+
+        $this->actingAs($admin)->get(route('admin.evaluation-rules.index'))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/EvaluationRules/Index')->has('rules', 1));
+
+        $this->actingAs($admin)->get(route('admin.reports.pending-evaluations', ['period' => $period->id]))
+            ->assertOk()
+            ->assertInertia(fn ($page) => $page->component('Admin/PendingEvaluations/Index')->where('rows.total', 1)->where('rows.data.0.target_nik', 'TARGET-001')->where('rows.data.0.target_position', 'SUPERVISOR')->where('rows.data.0.evaluator_nik', 'PENDING-001'));
+
+        $this->actingAs($admin)->get(route('admin.reports.pending-evaluations.export', ['period' => $period->id]))
+            ->assertOk()
+            ->assertDownload("belum-menilai-{$period->id}.csv")
+            ->assertHeader('content-type', 'text/csv; charset=UTF-8');
     }
 
     private function userWithRole(string $role): User
