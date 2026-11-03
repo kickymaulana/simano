@@ -36,8 +36,9 @@ const toggle = (items: number[], id: number) => {
                     <span v-else class="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 text-2xl font-bold text-blue-700">{{ user.name.slice(0, 1) }}</span>
                     <div><h2 class="font-bold">{{ user.name }}</h2><p class="text-sm text-slate-500">{{ user.nik }} · {{ user.email }} · {{ user.role }}</p><p class="mt-1 text-xs text-slate-500">Nama, foto, dan role dikelola melalui SSO.</p></div>
                 </div>
-                <Link :href="route('comments.index', user.id)" class="mt-4 inline-flex rounded-lg border border-blue-700 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">Lihat Komentar Saya</Link>
+                 <div class="mt-4 flex flex-wrap gap-2"><Link :href="route('comments.index', user.id)" class="inline-flex rounded-lg border border-blue-700 px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-50">Lihat Komentar Saya</Link><Link :href="route('profile.pending-evaluators')" class="inline-flex rounded-lg border border-amber-700 px-4 py-2 text-sm font-semibold text-amber-700 hover:bg-amber-50">Lihat yang Belum Menilai Saya</Link></div>
             </section>
+
 
             <section class="rounded-xl border border-slate-200 bg-white p-5">
                 <h2 class="font-bold">Organisasi saat ini</h2>

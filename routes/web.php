@@ -19,6 +19,7 @@ use App\Http\Controllers\Admin\UserAdminController;
 use App\Http\Controllers\Employee\CommentController;
 use App\Http\Controllers\Employee\EvaluationController;
 use App\Http\Controllers\Employee\EvaluationStatusController;
+use App\Http\Controllers\Employee\PendingEvaluatorController;
 use App\Http\Controllers\Employee\ProfileController;
 use App\Http\Controllers\Employee\TargetController;
 use App\Http\Controllers\Sso\PendingRoleController;
@@ -46,6 +47,7 @@ Route::middleware(['auth', 'role:employee|admin|hr'])->group(function () {
     Route::post('/evaluations', [EvaluationController::class, 'store'])->name('evaluations.store');
     Route::get('/evaluations/status', [EvaluationStatusController::class, 'index'])->name('evaluations.status');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/profile/pending-evaluators', [PendingEvaluatorController::class, 'index'])->name('profile.pending-evaluators');
     Route::put('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::get('/user-summary', [UserAdminController::class, 'summary'])->name('user-summary.index');
 });
